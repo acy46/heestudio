@@ -1,1 +1,14 @@
-{"projects":[{"slug":"the-day-beneath-silence","title":"The Day Beneath Silence","year":"2024–2025","category":"Collection","description":"Some invent, some merely pass through, some exhaust themselves in vain to find the portal; some suddenly awaken to the world's true meaning. At times life tastes bland, and we yearn for some distant shore.","images":[]}]}
+{
+  "projects": [
+    {
+      "slug": "the-day-beneath-silence",
+      "title": "The Day Beneath Silence",
+      "year": "2024–2025",
+      "category": "Collection",
+      "description": "Some invent, some merely pass through, some exhaust themselves in vain to find the portal; some suddenly awaken to the world's true meaning. At times life tastes bland, and we yearn for some distant shore.",
+      "images": [
+        "assets/images/1788029261006-img_2359.jpg"
+      ]
+    }
+  ]
+}
