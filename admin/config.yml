@@ -1,0 +1,33 @@
+backend:
+  name: github
+  repo: acy46/heestudio
+  branch: main
+  base_url: https://hees-studio-cms-auth.helenacy46.workers.dev
+  auth_endpoint: auth
+media_folder: assets/images
+public_folder: assets/images
+publish_mode: simple
+collections:
+  - name: site_content
+    label: Works
+    files:
+      - name: projects
+        label: Projects
+        file: content/projects.json
+        format: json
+        fields:
+          - label: Projects
+            name: projects
+            widget: list
+            summary: "{{fields.title}} · {{fields.year}}"
+            fields:
+              - { label: URL name, name: slug, widget: string, hint: "Use lowercase English letters, numbers and hyphens only. Example: spring-study-2026" }
+              - { label: Title, name: title, widget: string }
+              - { label: Year, name: year, widget: string, required: false }
+              - { label: Category, name: category, widget: string, default: Collection, required: false }
+              - { label: Description, name: description, widget: text, required: false }
+              - label: Images
+                name: images
+                widget: list
+                required: false
+                field: { label: Image, name: image, widget: image }
