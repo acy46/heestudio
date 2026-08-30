@@ -69,6 +69,9 @@ function setupParticles(intro) {
     u: Math.random() * Math.PI * 2,
     band: (Math.random() - .5) * .42,
     drift: Math.random() * Math.PI * 2,
+    scatterAngle: Math.random() * Math.PI * 2,
+    scatterDistance: Math.random() * 42 + 16,
+    scatter: 0,
     size: Math.random() * 1.55 + .48,
     alpha: Math.random() * .36 + .24
   }));
@@ -102,7 +105,10 @@ function setupParticles(intro) {
     const centerY = height * (.43 + (pointer.active ? (pointer.y - .45) * .025 : 0));
     const ringRadius = Math.min(width * .155, 178);
     const verticalScale = .42;
+    const pointerDistance = Math.hypot(pointer.x * width - centerX, pointer.y * height - centerY);
+    const scatterTarget = pointer.active ? Math.max(0, 1 - pointerDistance / (ringRadius * 1.45)) : 0;
     particles.forEach((particle) => {
+      particle.scatter += (scatterTarget - particle.scatter) * .055;
       const angle = particle.u + frame;
       const twist = angle / 2;
       const band = particle.band * ringRadius;
@@ -112,8 +118,9 @@ function setupParticles(intro) {
       const z3 = radius * Math.sin(angle);
       const perspective = .78 + ((z3 / ringRadius) + 1) * .11;
       const shimmer = Math.sin(frame * 4 + particle.drift) * .35;
-      const x = centerX + x3 * perspective;
-      const y = centerY + (y3 + z3 * verticalScale) * perspective + shimmer;
+      const scatterMotion = particle.scatter * particle.scatterDistance;
+      const x = centerX + x3 * perspective + Math.cos(particle.scatterAngle + frame * 2) * scatterMotion;
+      const y = centerY + (y3 + z3 * verticalScale) * perspective + Math.sin(particle.scatterAngle + frame * 2) * scatterMotion + shimmer;
       context.beginPath();
       context.arc(x, y, particle.size * perspective, 0, Math.PI * 2);
       context.fillStyle = `rgba(23,23,22,${particle.alpha * perspective})`;
