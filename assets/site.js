@@ -65,11 +65,18 @@ function setupParticles(intro) {
   canvas.setAttribute('aria-hidden', 'true');
   intro.prepend(canvas);
   const context = canvas.getContext('2d');
-  const particles = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random(), vx: (Math.random() - .5) * .00016, vy: (Math.random() - .5) * .00016, size: Math.random() * 1.45 + .45, alpha: Math.random() * .28 + .12 }));
-  const pointer = { x: .5, y: .5, active: false };
+  const particles = Array.from({ length: 118 }, () => ({
+    u: Math.random() * Math.PI * 2,
+    band: (Math.random() - .5) * .42,
+    drift: Math.random() * Math.PI * 2,
+    size: Math.random() * 1.25 + .38,
+    alpha: Math.random() * .3 + .15
+  }));
+  const pointer = { x: .5, y: .45, active: false };
   let width = 0;
   let height = 0;
   let ratio = 1;
+  let frame = 0;
   const resize = () => {
     const bounds = intro.getBoundingClientRect();
     ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -88,37 +95,28 @@ function setupParticles(intro) {
     pointer.active = true;
   });
   intro.addEventListener('pointerleave', () => { pointer.active = false; });
-  intro.addEventListener('pointerdown', (event) => {
-    const bounds = intro.getBoundingClientRect();
-    const x = (event.clientX - bounds.left) / bounds.width;
-    const y = (event.clientY - bounds.top) / bounds.height;
-    particles.forEach((particle) => {
-      const dx = particle.x - x;
-      const dy = particle.y - y;
-      const distance = Math.max(Math.hypot(dx, dy), .025);
-      if (distance < .3) { particle.vx += dx / distance * .0018; particle.vy += dy / distance * .0018; }
-    });
-  });
   const draw = () => {
     context.clearRect(0, 0, width, height);
+    frame += .0032;
+    const centerX = width * (.5 + (pointer.active ? (pointer.x - .5) * .035 : 0));
+    const centerY = height * (.43 + (pointer.active ? (pointer.y - .45) * .025 : 0));
+    const ringRadius = Math.min(width * .155, 178);
+    const verticalScale = .42;
     particles.forEach((particle) => {
-      if (pointer.active) {
-        const dx = particle.x - pointer.x;
-        const dy = particle.y - pointer.y;
-        const distance = Math.hypot(dx, dy);
-        if (distance < .18 && distance > .001) { particle.vx += dx / distance * .000015; particle.vy += dy / distance * .000015; }
-      }
-      particle.x += particle.vx;
-      particle.y += particle.vy;
-      particle.vx *= .994;
-      particle.vy *= .994;
-      if (particle.x < -.02 || particle.x > 1.02) particle.vx *= -1;
-      if (particle.y < -.02 || particle.y > 1.02) particle.vy *= -1;
-      particle.x = Math.max(-.02, Math.min(1.02, particle.x));
-      particle.y = Math.max(-.02, Math.min(1.02, particle.y));
+      const angle = particle.u + frame;
+      const twist = angle / 2;
+      const band = particle.band * ringRadius;
+      const radius = ringRadius + band * Math.cos(twist);
+      const x3 = radius * Math.cos(angle);
+      const y3 = band * Math.sin(twist);
+      const z3 = radius * Math.sin(angle);
+      const perspective = .78 + ((z3 / ringRadius) + 1) * .11;
+      const shimmer = Math.sin(frame * 4 + particle.drift) * .35;
+      const x = centerX + x3 * perspective;
+      const y = centerY + (y3 + z3 * verticalScale) * perspective + shimmer;
       context.beginPath();
-      context.arc(particle.x * width, particle.y * height, particle.size, 0, Math.PI * 2);
-      context.fillStyle = `rgba(23,23,22,${particle.alpha})`;
+      context.arc(x, y, particle.size * perspective, 0, Math.PI * 2);
+      context.fillStyle = `rgba(23,23,22,${particle.alpha * perspective})`;
       context.fill();
     });
     requestAnimationFrame(draw);
