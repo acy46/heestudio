@@ -101,15 +101,15 @@ function setupParticles(intro) {
   const draw = () => {
     context.clearRect(0, 0, width, height);
     frame += .0032;
-    const centerX = width * .5;
-    const flowHeight = height * .66;
-    const flowTop = height * .13;
+    const flowWidth = width * .7;
+    const flowLeft = width * .15;
+    const centerY = height * .43;
     particles.forEach((particle) => {
       const flow = (particle.flow + frame * .16) % 1;
-      const riverWidth = Math.min(width * .085, 76) * (.62 + Math.sin(flow * Math.PI) * .52);
-      const centerline = centerX + Math.sin(flow * 4.8 + .35) * width * .082 + Math.sin(flow * 13 + .5) * width * .014;
-      const baseX = centerline + particle.bank * riverWidth;
-      const baseY = flowTop + flow * flowHeight + Math.sin(particle.drift + frame * 3) * .8;
+      const riverWidth = Math.min(height * .105, 64) * (.6 + Math.sin(flow * Math.PI) * .5);
+      const centerline = centerY + Math.sin(flow * 5.1 + .3) * height * .07 + Math.sin(flow * 14 + .7) * height * .012;
+      const baseX = flowLeft + flow * flowWidth + Math.sin(particle.drift + frame * 3) * .8;
+      const baseY = centerline + particle.bank * riverWidth;
       const pointerDistance = Math.hypot(pointer.x * width - baseX, pointer.y * height - baseY);
       const scatterTarget = pointer.active ? Math.max(0, 1 - pointerDistance / 104) : 0;
       particle.scatter += (scatterTarget - particle.scatter) * .075;
