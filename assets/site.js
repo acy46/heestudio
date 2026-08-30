@@ -23,13 +23,44 @@ function renderProject(projects) {
   if (!project) { target.innerHTML = '<p class="loading">This project does not exist yet.</p>'; return; }
   document.title = `${project.title} — HEEs Studio`;
   const images = (project.images || []).map((image) => `<img src="${safeImage(image)}" alt="${escapeHtml(project.title)}" loading="lazy">`).join('');
-  target.innerHTML = `<a class="project-back" href="index.html#work">← All work</a><div class="project-meta-line"><span>${escapeHtml(project.year || '')}</span><span>${escapeHtml(project.category || 'Collection')}</span></div><h1>${escapeHtml(project.title)}</h1>${project.description ? `<p class="project-description">${escapeHtml(project.description)}</p>` : ''}<section class="project-gallery" aria-label="${escapeHtml(project.title)} gallery">${images || '<p class="empty-gallery">Images coming soon</p>'}</section>`;
+  const savedLayout = localStorage.getItem(`hees-layout-${project.slug}`) || project.layout || 'collage';
+  target.innerHTML = `<a class="project-back" href="index.html#work">← All work</a><div class="project-meta-line"><span>${escapeHtml(project.year || '')}</span><span>${escapeHtml(project.category || 'Collection')}</span></div><h1>${escapeHtml(project.title)}</h1>${project.description ? `<p class="project-description">${escapeHtml(project.description)}</p>` : ''}<div class="layout-switch" aria-label="Image layout"><span>Layout</span><button type="button" data-layout="collage">Collage</button><button type="button" data-layout="grid">Grid</button><button type="button" data-layout="story">Story</button></div><section class="project-gallery layout-${savedLayout}" aria-label="${escapeHtml(project.title)} gallery">${images || '<p class="empty-gallery">Images coming soon</p>'}</section>`;
+  target.querySelectorAll('[data-layout]').forEach((button) => button.addEventListener('click', () => {
+    const layout = button.dataset.layout;
+    const gallery = target.querySelector('.project-gallery');
+    gallery.classList.remove('layout-collage', 'layout-grid', 'layout-story');
+    gallery.classList.add(`layout-${layout}`);
+    localStorage.setItem(`hees-layout-${project.slug}`, layout);
+    target.querySelectorAll('[data-layout]').forEach((item) => item.classList.toggle('is-active', item === button));
+  }));
+  target.querySelector(`[data-layout="${savedLayout}"]`)?.classList.add('is-active');
 }
 
 function setupMotion() {
   const style = document.createElement('style');
   style.textContent = `@keyframes hees-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } } @keyframes hees-image { from { opacity: 0; transform: scale(1.025); } to { opacity: 1; transform: scale(1); } } .motion-intro { opacity: 0; animation: hees-rise .85s cubic-bezier(.22,.61,.36,1) forwards; } .motion-intro:nth-child(1) { animation-delay: .08s; } .motion-intro:nth-child(2) { animation-delay: .2s; } .motion-intro:nth-child(3) { animation-delay: .34s; } .motion-reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1); } .motion-reveal.is-visible { opacity: 1; transform: translateY(0); } .project-row { transition: padding .35s cubic-bezier(.22,.61,.36,1), background-color .35s ease; } .project-row:hover { background: rgba(23,23,22,.035); } .project-arrow { transition: transform .35s cubic-bezier(.22,.61,.36,1); } .project-row:hover .project-arrow { transform: translate(5px,-5px); } .project-gallery img { opacity: 0; animation: hees-image .9s cubic-bezier(.22,.61,.36,1) forwards; } .project-gallery img:nth-child(2) { animation-delay: .12s; } .project-gallery img:nth-child(3) { animation-delay: .2s; } .project-gallery img:nth-child(4) { animation-delay: .28s; } @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }`;
   document.head.appendChild(style);
+  const layoutStyle = document.createElement('style');
+  layoutStyle.textContent = `.layout-switch{display:flex;align-items:center;gap:8px;max-width:620px;margin:0 0 18px 34%;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#77756f}.layout-switch span{margin-right:6px}.layout-switch button{border:0;background:none;padding:3px 0;color:inherit;font:inherit;cursor:pointer}.layout-switch button.is-active{color:#171716;text-decoration:underline;text-underline-offset:4px}.project-gallery.layout-collage{grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}.project-gallery.layout-collage img{grid-column:span 5!important;aspect-ratio:4/5!important}.project-gallery.layout-collage img:nth-child(1){grid-column:span 7!important;aspect-ratio:16/10!important}.project-gallery.layout-collage img:nth-child(2){grid-column:8/span 5!important;margin-top:-6vw}.project-gallery.layout-collage img:nth-child(3){grid-column:span 4!important;margin-top:4vw}.project-gallery.layout-collage img:nth-child(4){grid-column:span 8!important;aspect-ratio:16/10!important}.project-gallery.layout-story{grid-template-columns:1fr;max-width:780px}.project-gallery.layout-story img{grid-column:auto!important;aspect-ratio:auto!important}.project-gallery.layout-grid img{grid-column:auto!important;aspect-ratio:4/5!important}@media(max-width:700px){.layout-switch{margin-left:0}.project-gallery.layout-collage{grid-template-columns:1fr}.project-gallery.layout-collage img,.project-gallery.layout-collage img:nth-child(n){grid-column:auto!important;margin-top:0;aspect-ratio:4/5!important}.project-gallery.layout-collage img:first-child{aspect-ratio:16/10!important}}`;
+  document.head.appendChild(layoutStyle);
+  const interactionStyle = document.createElement('style');
+  interactionStyle.textContent = `.intro{position:relative;overflow:hidden;isolation:isolate}.intro::before{content:"";position:absolute;z-index:-1;width:34rem;height:34rem;left:var(--pointer-x,50%);top:var(--pointer-y,50%);transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(23,23,22,.055),transparent 64%);pointer-events:none;transition:left .45s ease-out,top .45s ease-out}.atelier-note{position:absolute;left:50%;top:48%;width:112px;height:112px;border:1px solid #d8d6cf;border-radius:50%;background:rgba(250,249,245,.7);color:#171716;transform:translate(-50%,-50%) rotate(-8deg);transition:width .55s cubic-bezier(.22,.61,.36,1),height .55s cubic-bezier(.22,.61,.36,1),border-radius .55s ease,transform .55s ease,background .55s ease;text-align:left;padding:16px;overflow:hidden;font:10px/1.45 var(--mono);letter-spacing:.05em;cursor:pointer}.atelier-note:hover{transform:translate(-50%,-50%) rotate(0deg) scale(1.04)}.atelier-note span{display:block;text-transform:uppercase;color:#77756f}.atelier-note strong{display:block;margin-top:20px;font-weight:400}.atelier-note p{display:none;margin:14px 0 0;font:14px/1.5 var(--serif);letter-spacing:-.02em}.atelier-note.is-open{width:min(300px,calc(100% - 48px));height:190px;border-radius:2px;background:#171716;color:#faf9f5;transform:translate(-50%,-50%) rotate(0deg)}.atelier-note.is-open span{color:#b6b4ad}.atelier-note.is-open strong{margin-top:15px}.atelier-note.is-open p{display:block}@media(max-width:700px){.atelier-note{top:53%;left:50%;width:94px;height:94px;padding:13px}.atelier-note strong{margin-top:14px}.intro::before{width:22rem;height:22rem}}`;
+  document.head.appendChild(interactionStyle);
+  const intro = document.querySelector('.intro');
+  if (intro) {
+    intro.insertAdjacentHTML('beforeend', '<button class="atelier-note" type="button" aria-expanded="false"><span>✦ 01 / note</span><strong>touch here</strong><p>HEEs Studio is a quiet place for clothing, memory, and forms that stay with us.</p></button>');
+    const note = intro.querySelector('.atelier-note');
+    note.addEventListener('click', () => {
+      const isOpen = note.classList.toggle('is-open');
+      note.setAttribute('aria-expanded', String(isOpen));
+      note.querySelector('strong').textContent = isOpen ? 'HEEs Studio' : 'touch here';
+    });
+    intro.addEventListener('pointermove', (event) => {
+      const bounds = intro.getBoundingClientRect();
+      intro.style.setProperty('--pointer-x', `${event.clientX - bounds.left}px`);
+      intro.style.setProperty('--pointer-y', `${event.clientY - bounds.top}px`);
+    });
+  }
   document.querySelectorAll('.intro > *, .project-page > h1, .project-page > .project-meta-line, .project-page > .project-description').forEach((element) => element.classList.add('motion-intro'));
   const reveals = [...document.querySelectorAll('.project-row, .section-heading, .project-gallery')];
   reveals.forEach((element) => element.classList.add('motion-reveal'));
