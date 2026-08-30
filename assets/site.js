@@ -65,9 +65,9 @@ function setupParticles(intro) {
   canvas.setAttribute('aria-hidden', 'true');
   intro.prepend(canvas);
   const context = canvas.getContext('2d');
-  const particles = Array.from({ length: 330 }, () => ({
-    u: Math.random() * Math.PI * 2,
-    band: (Math.random() - .5) * .42,
+  const particles = Array.from({ length: 430 }, () => ({
+    flow: Math.random(),
+    bank: (Math.random() - .5) * 2,
     drift: Math.random() * Math.PI * 2,
     scatterAngle: Math.random() * Math.PI * 2,
     scatterDistance: Math.random() * 42 + 16,
@@ -101,29 +101,25 @@ function setupParticles(intro) {
   const draw = () => {
     context.clearRect(0, 0, width, height);
     frame += .0032;
-    const centerX = width * (.5 + (pointer.active ? (pointer.x - .5) * .035 : 0));
-    const centerY = height * (.43 + (pointer.active ? (pointer.y - .45) * .025 : 0));
-    const ringRadius = Math.min(width * .155, 178);
-    const verticalScale = .42;
-    const pointerDistance = Math.hypot(pointer.x * width - centerX, pointer.y * height - centerY);
-    const scatterTarget = pointer.active ? Math.max(0, 1 - pointerDistance / (ringRadius * 1.45)) : 0;
+    const centerX = width * .5;
+    const flowHeight = height * .66;
+    const flowTop = height * .13;
     particles.forEach((particle) => {
-      particle.scatter += (scatterTarget - particle.scatter) * .055;
-      const angle = particle.u + frame;
-      const twist = angle / 2;
-      const band = particle.band * ringRadius;
-      const radius = ringRadius + band * Math.cos(twist);
-      const x3 = radius * Math.cos(angle);
-      const y3 = band * Math.sin(twist);
-      const z3 = radius * Math.sin(angle);
-      const perspective = .78 + ((z3 / ringRadius) + 1) * .11;
-      const shimmer = Math.sin(frame * 4 + particle.drift) * .35;
+      const flow = (particle.flow + frame * .16) % 1;
+      const riverWidth = Math.min(width * .085, 76) * (.62 + Math.sin(flow * Math.PI) * .52);
+      const centerline = centerX + Math.sin(flow * 4.8 + .35) * width * .082 + Math.sin(flow * 13 + .5) * width * .014;
+      const baseX = centerline + particle.bank * riverWidth;
+      const baseY = flowTop + flow * flowHeight + Math.sin(particle.drift + frame * 3) * .8;
+      const pointerDistance = Math.hypot(pointer.x * width - baseX, pointer.y * height - baseY);
+      const scatterTarget = pointer.active ? Math.max(0, 1 - pointerDistance / 104) : 0;
+      particle.scatter += (scatterTarget - particle.scatter) * .075;
+      const rippleDirection = Math.atan2(baseY - pointer.y * height, baseX - pointer.x * width);
       const scatterMotion = particle.scatter * particle.scatterDistance;
-      const x = centerX + x3 * perspective + Math.cos(particle.scatterAngle + frame * 2) * scatterMotion;
-      const y = centerY + (y3 + z3 * verticalScale) * perspective + Math.sin(particle.scatterAngle + frame * 2) * scatterMotion + shimmer;
+      const x = baseX + Math.cos(rippleDirection) * scatterMotion;
+      const y = baseY + Math.sin(rippleDirection) * scatterMotion;
       context.beginPath();
-      context.arc(x, y, particle.size * perspective, 0, Math.PI * 2);
-      context.fillStyle = `rgba(23,23,22,${particle.alpha * perspective})`;
+      context.arc(x, y, particle.size, 0, Math.PI * 2);
+      context.fillStyle = `rgba(23,23,22,${particle.alpha})`;
       context.fill();
     });
     requestAnimationFrame(draw);
