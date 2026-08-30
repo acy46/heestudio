@@ -65,12 +65,12 @@ function setupParticles(intro) {
   canvas.setAttribute('aria-hidden', 'true');
   intro.prepend(canvas);
   const context = canvas.getContext('2d');
-  const particles = Array.from({ length: 118 }, () => ({
+  const particles = Array.from({ length: 330 }, () => ({
     u: Math.random() * Math.PI * 2,
     band: (Math.random() - .5) * .42,
     drift: Math.random() * Math.PI * 2,
-    size: Math.random() * 1.25 + .38,
-    alpha: Math.random() * .3 + .15
+    size: Math.random() * 1.55 + .48,
+    alpha: Math.random() * .36 + .24
   }));
   const pointer = { x: .5, y: .45, active: false };
   let width = 0;
