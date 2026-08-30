@@ -44,22 +44,11 @@ function setupMotion() {
   layoutStyle.textContent = `.layout-switch{display:flex;align-items:center;gap:8px;max-width:620px;margin:0 0 18px 34%;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#77756f}.layout-switch span{margin-right:6px}.layout-switch button{border:0;background:none;padding:3px 0;color:inherit;font:inherit;cursor:pointer}.layout-switch button.is-active{color:#171716;text-decoration:underline;text-underline-offset:4px}.project-gallery.layout-collage{grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}.project-gallery.layout-collage img{grid-column:span 5!important;aspect-ratio:4/5!important}.project-gallery.layout-collage img:nth-child(1){grid-column:span 7!important;aspect-ratio:16/10!important}.project-gallery.layout-collage img:nth-child(2){grid-column:8/span 5!important;margin-top:-6vw}.project-gallery.layout-collage img:nth-child(3){grid-column:span 4!important;margin-top:4vw}.project-gallery.layout-collage img:nth-child(4){grid-column:span 8!important;aspect-ratio:16/10!important}.project-gallery.layout-story{grid-template-columns:1fr;max-width:780px}.project-gallery.layout-story img{grid-column:auto!important;aspect-ratio:auto!important}.project-gallery.layout-grid img{grid-column:auto!important;aspect-ratio:4/5!important}@media(max-width:700px){.layout-switch{margin-left:0}.project-gallery.layout-collage{grid-template-columns:1fr}.project-gallery.layout-collage img,.project-gallery.layout-collage img:nth-child(n){grid-column:auto!important;margin-top:0;aspect-ratio:4/5!important}.project-gallery.layout-collage img:first-child{aspect-ratio:16/10!important}}`;
   document.head.appendChild(layoutStyle);
   const interactionStyle = document.createElement('style');
-  interactionStyle.textContent = `.intro{position:relative;overflow:hidden;isolation:isolate}.intro::before{content:"";position:absolute;z-index:-1;width:34rem;height:34rem;left:var(--pointer-x,50%);top:var(--pointer-y,50%);transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(23,23,22,.055),transparent 64%);pointer-events:none;transition:left .45s ease-out,top .45s ease-out}.atelier-note{position:absolute;left:50%;top:48%;width:112px;height:112px;border:1px solid #d8d6cf;border-radius:50%;background:rgba(250,249,245,.7);color:#171716;transform:translate(-50%,-50%) rotate(-8deg);transition:width .55s cubic-bezier(.22,.61,.36,1),height .55s cubic-bezier(.22,.61,.36,1),border-radius .55s ease,transform .55s ease,background .55s ease;text-align:left;padding:16px;overflow:hidden;font:10px/1.45 var(--mono);letter-spacing:.05em;cursor:pointer}.atelier-note:hover{transform:translate(-50%,-50%) rotate(0deg) scale(1.04)}.atelier-note span{display:block;text-transform:uppercase;color:#77756f}.atelier-note strong{display:block;margin-top:20px;font-weight:400}.atelier-note p{display:none;margin:14px 0 0;font:14px/1.5 var(--serif);letter-spacing:-.02em}.atelier-note.is-open{width:min(300px,calc(100% - 48px));height:190px;border-radius:2px;background:#171716;color:#faf9f5;transform:translate(-50%,-50%) rotate(0deg)}.atelier-note.is-open span{color:#b6b4ad}.atelier-note.is-open strong{margin-top:15px}.atelier-note.is-open p{display:block}@media(max-width:700px){.atelier-note{top:53%;left:50%;width:94px;height:94px;padding:13px}.atelier-note strong{margin-top:14px}.intro::before{width:22rem;height:22rem}}`;
+  interactionStyle.textContent = `.intro{position:relative;overflow:hidden;isolation:isolate}.intro>*:not(.particle-field){position:relative;z-index:1}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}`;
   document.head.appendChild(interactionStyle);
   const intro = document.querySelector('.intro');
   if (intro) {
-    intro.insertAdjacentHTML('beforeend', '<button class="atelier-note" type="button" aria-expanded="false"><span>✦ 01 / note</span><strong>touch here</strong><p>HEEs Studio is a quiet place for clothing, memory, and forms that stay with us.</p></button>');
-    const note = intro.querySelector('.atelier-note');
-    note.addEventListener('click', () => {
-      const isOpen = note.classList.toggle('is-open');
-      note.setAttribute('aria-expanded', String(isOpen));
-      note.querySelector('strong').textContent = isOpen ? 'HEEs Studio' : 'touch here';
-    });
-    intro.addEventListener('pointermove', (event) => {
-      const bounds = intro.getBoundingClientRect();
-      intro.style.setProperty('--pointer-x', `${event.clientX - bounds.left}px`);
-      intro.style.setProperty('--pointer-y', `${event.clientY - bounds.top}px`);
-    });
+    setupParticles(intro);
   }
   document.querySelectorAll('.intro > *, .project-page > h1, .project-page > .project-meta-line, .project-page > .project-description').forEach((element) => element.classList.add('motion-intro'));
   const reveals = [...document.querySelectorAll('.project-row, .section-heading, .project-gallery')];
@@ -67,6 +56,74 @@ function setupMotion() {
   if (!('IntersectionObserver' in window)) { reveals.forEach((element) => element.classList.add('is-visible')); return; }
   const observer = new IntersectionObserver((entries) => entries.forEach((entry) => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); } }), { threshold: .15 });
   reveals.forEach((element) => observer.observe(element));
+}
+
+function setupParticles(intro) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const canvas = document.createElement('canvas');
+  canvas.className = 'particle-field';
+  canvas.setAttribute('aria-hidden', 'true');
+  intro.prepend(canvas);
+  const context = canvas.getContext('2d');
+  const particles = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random(), vx: (Math.random() - .5) * .00016, vy: (Math.random() - .5) * .00016, size: Math.random() * 1.45 + .45, alpha: Math.random() * .28 + .12 }));
+  const pointer = { x: .5, y: .5, active: false };
+  let width = 0;
+  let height = 0;
+  let ratio = 1;
+  const resize = () => {
+    const bounds = intro.getBoundingClientRect();
+    ratio = Math.min(window.devicePixelRatio || 1, 2);
+    width = bounds.width;
+    height = bounds.height;
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  };
+  new ResizeObserver(resize).observe(intro);
+  resize();
+  intro.addEventListener('pointermove', (event) => {
+    const bounds = intro.getBoundingClientRect();
+    pointer.x = (event.clientX - bounds.left) / bounds.width;
+    pointer.y = (event.clientY - bounds.top) / bounds.height;
+    pointer.active = true;
+  });
+  intro.addEventListener('pointerleave', () => { pointer.active = false; });
+  intro.addEventListener('pointerdown', (event) => {
+    const bounds = intro.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) / bounds.width;
+    const y = (event.clientY - bounds.top) / bounds.height;
+    particles.forEach((particle) => {
+      const dx = particle.x - x;
+      const dy = particle.y - y;
+      const distance = Math.max(Math.hypot(dx, dy), .025);
+      if (distance < .3) { particle.vx += dx / distance * .0018; particle.vy += dy / distance * .0018; }
+    });
+  });
+  const draw = () => {
+    context.clearRect(0, 0, width, height);
+    particles.forEach((particle) => {
+      if (pointer.active) {
+        const dx = particle.x - pointer.x;
+        const dy = particle.y - pointer.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance < .18 && distance > .001) { particle.vx += dx / distance * .000015; particle.vy += dy / distance * .000015; }
+      }
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      particle.vx *= .994;
+      particle.vy *= .994;
+      if (particle.x < -.02 || particle.x > 1.02) particle.vx *= -1;
+      if (particle.y < -.02 || particle.y > 1.02) particle.vy *= -1;
+      particle.x = Math.max(-.02, Math.min(1.02, particle.x));
+      particle.y = Math.max(-.02, Math.min(1.02, particle.y));
+      context.beginPath();
+      context.arc(particle.x * width, particle.y * height, particle.size, 0, Math.PI * 2);
+      context.fillStyle = `rgba(23,23,22,${particle.alpha})`;
+      context.fill();
+    });
+    requestAnimationFrame(draw);
+  };
+  draw();
 }
 
 getProjects().then((projects) => { renderList(projects); renderProject(projects); setupMotion(); }).catch((error) => {
