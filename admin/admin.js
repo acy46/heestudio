@@ -1,1 +1,80 @@
-const OAUTH='https://hees-studio-cms-auth.helenacy46.workers.dev';const REPO='acy46/heestudio';const BRANCH='main';const DATA_PATH='content/projects.json';const tokenKey='hees_admin_token';let projects=[];let dataSha='';const api=(path,options={})=>fetch(`https://api.github.com/repos/${REPO}/contents/${path}`,{...options,headers:{Accept:'application/vnd.github+json',Authorization:`Bearer ${sessionStorage.getItem(tokenKey)}`,...(options.headers||{})}});const b64decode=value=>decodeURIComponent(escape(atob(value.replace(/\n/g,''))));const b64encode=value=>btoa(unescape(encodeURIComponent(value)));const esc=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function showLogin(){document.getElementById('app').innerHTML='<section class="login-card"><p class="kicker">HEEs Studio · PRIVATE STUDIO</p><h1>管理你的<br><em>作品。</em></h1><p>在这里创建作品页面、上传图片，并发布到网站。</p><button id="login" class="button dark">使用 GitHub 登录</button><small>只有你拥有 GitHub 仓库写入权限时才能发布。</small></section>';document.getElementById('login').onclick=login}function login(){const popup=window.open(`${OAUTH}/auth?provider=github`,'hees-github-login','width=640,height=720');const receive=event=>{if(event.source!==popup)return;if(event.data==='authorizing:github'){popup.postMessage('authorizing:github','*');return}if(typeof event.data!=='string'||!event.data.startsWith('authorization:github:'))return;window.removeEventListener('message',receive);const parts=event.data.split(':');if(parts[2]!=='success'){showLogin();return}try{const payload=JSON.parse(parts.slice(3).join(':'));sessionStorage.setItem(tokenKey,payload.token);popup.close();loadApp()}catch(error){alert('登录响应无效，请重试。')}};window.addEventListener('message',receive)}async function loadData(){const response=await api(DATA_PATH);if(!response.ok)throw new Error('无法读取作品数据，请确认仓库中已有 content/projects.json。');const file=await response.json();dataSha=file.sha;const data=JSON.parse(b64decode(file.content));projects=Array.isArray(data.projects)?data.projects:[]}async function loadApp(){try{await loadData();renderApp()}catch(error){showError(error.message)}}function renderApp(){document.getElementById('app').innerHTML=`<div class="shell"><header class="topbar"><strong>HEEs Studio <span>工作室后台</span></strong><button id="logout" class="button">退出登录</button></header><section class="content"><div class="content-head"><div><p class="kicker">PRIVATE STUDIO</p><h1>作品。</h1></div><button id="new-work" class="button dark">＋ 新建作品</button></div><div class="works">${projects.length?projects.map((item,index)=>`<div class="work"><small>${String(index+1).padStart(2,'0')}</small><strong>${esc(item.title)}</strong><small>${esc(item.year)}</small><span class="arrow">↗</span></div>`).join(''):'<p class="notice">还没有作品，创建你的第一个作品页面。</p>'}</div></section></div>`;document.getElementById('logout').onclick=()=>{sessionStorage.removeItem(tokenKey);showLogin()};document.getElementById('new-work').onclick=showModal}function showError(message){document.getElementById('app').innerHTML=`<section class="login-card"><p class="kicker">HEEs Studio · ERROR</p><h1>暂时无法<br><em>读取作品。</em></h1><p class="error">${esc(message)}</p><button class="button" onclick="showLogin()">返回登录</button></section>`}function showModal(){const wrap=document.createElement('div');wrap.className='modal-wrap';wrap.innerHTML='<section class="modal"><h2>新建作品</h2><form id="work-form"><div class="field"><label>作品标题</label><input name="title" required placeholder="例如：The Day Beneath Silence"></div><div class="field"><label>年份</label><input name="year" placeholder="2026"></div><div class="field"><label>分类</label><input name="category" placeholder="Collection"></div><div class="field"><label>作品简介</label><textarea name="description" placeholder="写下这组作品的文字……"></textarea></div><div class="field"><label>作品图片</label><input name="images" type="file" accept="image/*" multiple><span class="file-note">可一次选择多张图片。图片会保存到 GitHub 的 assets/images 文件夹。</span></div><p class="progress" id="progress"></p><p class="error" id="form-error"></p><div class="modal-actions"><button type="button" class="button" id="cancel">取消</button><button class="button dark" type="submit">发布作品</button></div></form></section>';document.body.appendChild(wrap);wrap.querySelector('#cancel').onclick=()=>wrap.remove();wrap.querySelector('#work-form').onsubmit=event=>publish(event,wrap)}const slugify=value=>value.toLowerCase().trim().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-');const fileBase=name=>name.toLowerCase().replace(/[^a-z0-9._-]/g,'-');async function publish(event,wrap){event.preventDefault();const form=new FormData(event.target);const title=form.get('title').trim();const slug=slugify(title);const progress=wrap.querySelector('#progress');const error=wrap.querySelector('#form-error');if(!slug){error.textContent='标题需要包含英文字母或数字，以生成页面地址。';return}if(projects.some(item=>item.slug===slug)){error.textContent='这个作品地址已经存在，请修改标题。';return}try{const files=[...form.get('images')];const imagePaths=[];for(let index=0;index<files.length;index++){progress.textContent=`正在上传图片 ${index+1}/${files.length}……`;const file=files[index];const path=`assets/images/${Date.now()}-${fileBase(file.name)}`;const buffer=await file.arrayBuffer();const binary=String.fromCharCode(...new Uint8Array(buffer));const response=await api(path,{method:'PUT',body:JSON.stringify({message:`Add image for ${title}`,content:btoa(binary),branch:BRANCH})});if(!response.ok)throw new Error('图片上传失败，请检查 GitHub 权限或图片大小。');imagePaths.push(path)}const next={projects:[...projects,{slug,title,year:form.get('year').trim(),category:form.get('category').trim()||'Collection',description:form.get('description').trim(),images:imagePaths}]};progress.textContent='正在发布作品数据……';const response=await api(DATA_PATH,{method:'PUT',body:JSON.stringify({message:`Add work: ${title}`,content:b64encode(JSON.stringify(next,null,2)+'\n'),sha:dataSha,branch:BRANCH})});if(!response.ok)throw new Error('作品数据发布失败。');wrap.remove();await loadData();renderApp()}catch(caught){error.textContent=caught.message;progress.textContent=''}}if(sessionStorage.getItem(tokenKey))loadApp();else showLogin();
+const OAUTH='https://hees-studio-cms-auth.helenacy46.workers.dev';
+const REPO='acy46/heestudio', BRANCH='main', DATA_PATH='content/projects.json', tokenKey='hees_admin_token';
+let projects=[], dataSha='';
+const api=(path,options={})=>fetch(`https://api.github.com/repos/${REPO}/contents/${path}`,{...options,headers:{Accept:'application/vnd.github+json',Authorization:`Bearer ${sessionStorage.getItem(tokenKey)}`,...(options.headers||{})}});
+const b64decode=value=>decodeURIComponent(escape(atob(value.replace(/\n/g,''))));
+const b64encode=value=>btoa(unescape(encodeURIComponent(value)));
+const esc=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const slugify=value=>value.toLowerCase().trim().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-');
+const fileBase=name=>name.toLowerCase().replace(/[^a-z0-9._-]/g,'-');
+
+async function imageBase64(file){
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  let binary='';
+  for(let index=0;index<bytes.length;index+=0x8000) binary+=String.fromCharCode(...bytes.subarray(index,index+0x8000));
+  return btoa(binary);
+}
+
+function showLogin(){
+  document.getElementById('app').innerHTML='<section class="login-card"><p class="kicker">HEEs Studio · PRIVATE STUDIO</p><h1>管理你的<br><em>作品。</em></h1><p>在这里创建作品页面、上传图片，并发布到网站。</p><button id="login" class="button dark">使用 GitHub 登录</button><small>只有你拥有 GitHub 仓库写入权限时才能发布。</small></section>';
+  document.getElementById('login').onclick=login;
+}
+function login(){
+  const popup=window.open(`${OAUTH}/auth?provider=github`,'hees-github-login','width=640,height=720');
+  const receive=event=>{
+    if(event.source!==popup)return;
+    if(event.data==='authorizing:github'){popup.postMessage('authorizing:github','*');return;}
+    if(typeof event.data!=='string'||!event.data.startsWith('authorization:github:'))return;
+    window.removeEventListener('message',receive);
+    const parts=event.data.split(':');
+    if(parts[2]!=='success'){showLogin();return;}
+    try{sessionStorage.setItem(tokenKey,JSON.parse(parts.slice(3).join(':')).token);popup.close();loadApp();}catch{alert('登录响应无效，请重试。');}
+  };
+  window.addEventListener('message',receive);
+}
+async function loadData(){
+  const response=await api(DATA_PATH);
+  if(!response.ok)throw new Error('无法读取作品数据，请确认仓库中已有 content/projects.json。');
+  const file=await response.json();
+  dataSha=file.sha;
+  const data=JSON.parse(b64decode(file.content));
+  projects=Array.isArray(data.projects)?data.projects:[];
+}
+async function loadApp(){try{await loadData();renderApp();}catch(error){showError(error.message);}}
+function renderApp(){
+  document.getElementById('app').innerHTML=`<div class="shell"><header class="topbar"><strong>HEEs Studio <span>工作室后台</span></strong><button id="logout" class="button">退出登录</button></header><section class="content"><div class="content-head"><div><p class="kicker">PRIVATE STUDIO</p><h1>作品。</h1></div><button id="new-work" class="button dark">＋ 新建作品</button></div><div class="works">${projects.length?projects.map((item,index)=>`<div class="work"><small>${String(index+1).padStart(2,'0')}</small><strong>${esc(item.title)}</strong><small>${esc(item.year)}</small><span class="arrow">↗</span></div>`).join(''):'<p class="notice">还没有作品，创建你的第一个作品页面。</p>'}</div></section></div>`;
+  document.getElementById('logout').onclick=()=>{sessionStorage.removeItem(tokenKey);showLogin();};
+  document.getElementById('new-work').onclick=showModal;
+}
+function showError(message){document.getElementById('app').innerHTML=`<section class="login-card"><p class="kicker">HEEs Studio · ERROR</p><h1>暂时无法<br><em>读取作品。</em></h1><p class="error">${esc(message)}</p><button class="button" onclick="showLogin()">返回登录</button></section>`;}
+function showModal(){
+  const wrap=document.createElement('div');
+  wrap.className='modal-wrap';
+  wrap.innerHTML='<section class="modal"><h2>新建作品</h2><form id="work-form"><div class="field"><label>作品标题</label><input name="title" required placeholder="例如：The Day Beneath Silence"></div><div class="field"><label>年份</label><input name="year" placeholder="2026"></div><div class="field"><label>分类</label><input name="category" placeholder="Collection"></div><div class="field"><label>作品简介</label><textarea name="description" placeholder="写下这组作品的文字……"></textarea></div><div class="field"><label>作品图片</label><input name="images" type="file" accept="image/*" multiple><span class="file-note">可一次选择多张图片。图片会保存到 GitHub 的 assets/images 文件夹。</span></div><p class="progress" id="progress"></p><p class="error" id="form-error"></p><div class="modal-actions"><button type="button" class="button" id="cancel">取消</button><button class="button dark" type="submit">发布作品</button></div></form></section>';
+  document.body.appendChild(wrap);
+  wrap.querySelector('#cancel').onclick=()=>wrap.remove();
+  wrap.querySelector('#work-form').onsubmit=event=>publish(event,wrap);
+}
+async function publish(event,wrap){
+  event.preventDefault();
+  const form=new FormData(event.target), title=form.get('title').trim(), slug=slugify(title);
+  const progress=wrap.querySelector('#progress'), error=wrap.querySelector('#form-error');
+  if(!slug){error.textContent='标题需要包含英文字母或数字，以生成页面地址。';return;}
+  if(projects.some(item=>item.slug===slug)){error.textContent='这个作品地址已经存在，请修改标题。';return;}
+  try{
+    const files=form.getAll('images').filter(file=>file.size>0), imagePaths=[];
+    for(let index=0;index<files.length;index+=1){
+      const file=files[index], path=`assets/images/${Date.now()}-${fileBase(file.name)}`;
+      progress.textContent=`正在上传图片 ${index+1}/${files.length}……`;
+      const response=await api(path,{method:'PUT',body:JSON.stringify({message:`Add image for ${title}`,content:await imageBase64(file),branch:BRANCH})});
+      if(!response.ok)throw new Error('图片上传失败，请检查 GitHub 权限或图片大小。');
+      imagePaths.push(path);
+    }
+    const next={projects:[...projects,{slug,title,year:form.get('year').trim(),category:form.get('category').trim()||'Collection',description:form.get('description').trim(),images:imagePaths}]};
+    progress.textContent='正在发布作品数据……';
+    const response=await api(DATA_PATH,{method:'PUT',body:JSON.stringify({message:`Add work: ${title}`,content:b64encode(JSON.stringify(next,null,2)+'\n'),sha:dataSha,branch:BRANCH})});
+    if(!response.ok)throw new Error('作品数据发布失败。');
+    wrap.remove();await loadData();renderApp();
+  }catch(caught){error.textContent=caught.message;progress.textContent='';}
+}
+if(sessionStorage.getItem(tokenKey))loadApp();else showLogin();
