@@ -1,4 +1,5 @@
 const dataUrl = 'content/projects.json';
+const siteDataUrl = 'content/site.json';
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 const safeImage = (value = '') => encodeURI(value).replace(/"/g, '%22');
 
@@ -7,6 +8,13 @@ async function getProjects() {
   if (!response.ok) throw new Error('Projects could not be loaded.');
   const data = await response.json();
   return Array.isArray(data.projects) ? data.projects : [];
+}
+
+async function getHomeSettings() {
+  const response = await fetch(siteDataUrl, { cache: 'no-store' });
+  if (response.status === 404) return {};
+  if (!response.ok) return {};
+  return response.json();
 }
 
 function renderList(projects) {
@@ -25,7 +33,7 @@ function renderProject(projects) {
   const images = (project.images || []).map((image) => `<img src="${safeImage(image)}" alt="${escapeHtml(project.title)}" loading="lazy">`).join('');
   target.innerHTML = `<a class="project-back" href="index.html#work">← All work</a><div class="project-meta-line"><span>${escapeHtml(project.year || '')}</span><span>${escapeHtml(project.category || 'Collection')}</span></div><h1>${escapeHtml(project.title)}</h1>${project.description ? `<p class="project-description">${escapeHtml(project.description)}</p>` : ''}<section class="project-gallery card-carousel" aria-label="${escapeHtml(project.title)} gallery">${images || '<p class="empty-gallery">Images coming soon</p>'}</section>`;
   const description = target.querySelector('.project-description');
-  if (description && project.description.includes('\n')) description.innerHTML = project.description.split(/\n\s*\n/).filter(Boolean).map((paragraph) => `<span>${escapeHtml(paragraph)}</span>`).join('');
+  if (description) description.innerHTML = project.description.split(/\n\s*\n/).filter(Boolean).map((paragraph, index) => `<span style="--paragraph-index:${index}">${escapeHtml(paragraph)}</span>`).join('');
   setupCardCarousel(target.querySelector('.card-carousel'));
 }
 
@@ -62,10 +70,10 @@ function setupMotion() {
   style.textContent = `@keyframes hees-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } } @keyframes hees-image { from { opacity: 0; transform: scale(1.025); } to { opacity: 1; transform: scale(1); } } .motion-intro { opacity: 0; animation: hees-rise .85s cubic-bezier(.22,.61,.36,1) forwards; } .motion-intro:nth-child(1) { animation-delay: .08s; } .motion-intro:nth-child(2) { animation-delay: .2s; } .motion-intro:nth-child(3) { animation-delay: .34s; } .motion-reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1); } .motion-reveal.is-visible { opacity: 1; transform: translateY(0); } .project-row { transition: padding .35s cubic-bezier(.22,.61,.36,1), background-color .35s ease; } .project-row:hover { background: rgba(23,23,22,.035); } .project-arrow { transition: transform .35s cubic-bezier(.22,.61,.36,1); } .project-row:hover .project-arrow { transform: translate(5px,-5px); } .project-gallery img { opacity: 0; animation: hees-image .9s cubic-bezier(.22,.61,.36,1) forwards; } .project-gallery img:nth-child(2) { animation-delay: .12s; } .project-gallery img:nth-child(3) { animation-delay: .2s; } .project-gallery img:nth-child(4) { animation-delay: .28s; } @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }`;
   document.head.appendChild(style);
   const scrollStyle = document.createElement('style');
-  scrollStyle.textContent = `.project-description span{display:block}.project-description span+span{margin-top:1.3em}.project-gallery.card-carousel{--card-width:min(50vw,600px);position:relative;display:block;max-width:none;height:min(64vw,768px);overflow:hidden;perspective:1400px}.project-gallery.card-carousel img{position:absolute;top:0;left:50%;width:var(--card-width);height:auto;grid-column:auto!important;aspect-ratio:4/5!important;object-fit:cover;opacity:0;transform:translateX(-50%) scale(.72);filter:grayscale(1);transition:transform .8s cubic-bezier(.22,.61,.36,1),opacity .65s ease,filter .65s ease;animation:none;user-select:none;pointer-events:none}.project-gallery.card-carousel img.is-current{opacity:1;transform:translateX(-50%) scale(1);filter:grayscale(0);z-index:3;pointer-events:auto;cursor:default}.project-gallery.card-carousel img.is-left{opacity:.54;transform:translateX(-122%) scale(.84) rotateY(-18deg);transform-origin:right center;z-index:1;pointer-events:auto;cursor:pointer}.project-gallery.card-carousel img.is-right{opacity:.54;transform:translateX(22%) scale(.84) rotateY(18deg);transform-origin:left center;z-index:1;pointer-events:auto;cursor:pointer}@media(max-width:700px){.project-gallery.card-carousel{--card-width:72vw;height:91vw}.project-gallery.card-carousel img.is-left{transform:translateX(-116%) scale(.86) rotateY(-13deg)}.project-gallery.card-carousel img.is-right{transform:translateX(16%) scale(.86) rotateY(13deg)}}`;
+  scrollStyle.textContent = `@keyframes paragraph-reveal{from{opacity:0;transform:translateY(12px)}to{opacity:.82;transform:translateY(0)}}.project-description span{position:relative;display:block;opacity:0;animation:paragraph-reveal .75s cubic-bezier(.22,.61,.36,1) forwards;animation-delay:calc(.48s + var(--paragraph-index)*.14s);transition:opacity .35s ease,transform .45s cubic-bezier(.22,.61,.36,1),color .35s ease}.project-description span+span{margin-top:1.3em}.project-description span::before{content:"—";position:absolute;left:-26px;opacity:0;transform:translateX(-7px);transition:opacity .35s ease,transform .45s cubic-bezier(.22,.61,.36,1)}@media(hover:hover){.project-description:has(span:hover) span:not(:hover){opacity:.35!important}.project-description span:hover{opacity:1!important;transform:translateX(12px);color:#171716}.project-description span:hover::before{opacity:1;transform:translateX(0)}}.project-gallery.card-carousel{--card-width:min(50vw,600px);position:relative;display:block;max-width:none;height:min(64vw,768px);overflow:hidden;perspective:1400px}.project-gallery.card-carousel img{position:absolute;top:0;left:50%;width:var(--card-width);height:auto;grid-column:auto!important;aspect-ratio:4/5!important;object-fit:cover;opacity:0;transform:translateX(-50%) scale(.72);filter:grayscale(1);transition:transform .8s cubic-bezier(.22,.61,.36,1),opacity .65s ease,filter .65s ease;animation:none;user-select:none;pointer-events:none}.project-gallery.card-carousel img.is-current{opacity:1;transform:translateX(-50%) scale(1);filter:grayscale(0);z-index:3;pointer-events:auto;cursor:default}.project-gallery.card-carousel img.is-left{opacity:.54;transform:translateX(-122%) scale(.84) rotateY(-18deg);transform-origin:right center;z-index:1;pointer-events:auto;cursor:pointer}.project-gallery.card-carousel img.is-right{opacity:.54;transform:translateX(22%) scale(.84) rotateY(18deg);transform-origin:left center;z-index:1;pointer-events:auto;cursor:pointer}@media(max-width:700px){.project-gallery.card-carousel{--card-width:72vw;height:91vw}.project-gallery.card-carousel img.is-left{transform:translateX(-116%) scale(.86) rotateY(-13deg)}.project-gallery.card-carousel img.is-right{transform:translateX(16%) scale(.86) rotateY(13deg)}}`;
   document.head.appendChild(scrollStyle);
   const interactionStyle = document.createElement('style');
-  interactionStyle.textContent = `.intro{position:relative;overflow:hidden;isolation:isolate}.intro>*:not(.particle-field){position:relative;z-index:1}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}`;
+  interactionStyle.textContent = `.intro{--home-foreground:#171716;position:relative;overflow:hidden;isolation:isolate;transition:color .6s ease}.intro>*:not(.particle-field):not(.home-background){position:relative;z-index:2}.intro.has-home-background h1,.intro.has-home-background .eyebrow,.intro.has-home-background .intro-note{color:var(--home-foreground);transition:color .6s ease,text-shadow .6s ease}.intro.has-home-background h1{text-shadow:0 1px 20px rgba(0,0,0,.08)}.home-background{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}`;
   document.head.appendChild(interactionStyle);
   const intro = document.querySelector('.intro');
   if (intro) {
@@ -77,6 +85,53 @@ function setupMotion() {
   if (!('IntersectionObserver' in window)) { reveals.forEach((element) => element.classList.add('is-visible')); return; }
   const observer = new IntersectionObserver((entries) => entries.forEach((entry) => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); } }), { threshold: .15 });
   reveals.forEach((element) => observer.observe(element));
+}
+
+function setupHomeBackground(settings) {
+  const intro = document.querySelector('.intro');
+  if (!intro || !settings.background) return;
+  const path = safeImage(settings.background);
+  const isVideo = settings.type === 'video' || /\.(mp4|webm|mov)(\?|$)/i.test(path);
+  const media = document.createElement(isVideo ? 'video' : 'img');
+  media.className = 'home-background';
+  media.setAttribute('aria-hidden', 'true');
+  if (isVideo) {
+    media.src = path;
+    media.autoplay = true;
+    media.muted = true;
+    media.loop = true;
+    media.playsInline = true;
+  } else {
+    media.src = path;
+    media.alt = '';
+  }
+  intro.prepend(media);
+  intro.classList.add('has-home-background');
+  const sample = () => {
+    if ((isVideo && media.readyState < 2) || (!isVideo && !media.complete)) return;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 32;
+      canvas.height = 32;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.fillStyle = '#faf9f5';
+      context.fillRect(0, 0, 32, 32);
+      context.drawImage(media, 0, 0, 32, 32);
+      const pixels = context.getImageData(0, 0, 32, 32).data;
+      let luminance = 0;
+      let count = 0;
+      for (let index = 0; index < pixels.length; index += 16) {
+        luminance += .2126 * pixels[index] + .7152 * pixels[index + 1] + .0722 * pixels[index + 2];
+        count += 1;
+      }
+      const useLight = luminance / count < 142;
+      intro.style.setProperty('--home-foreground', useLight ? '#faf9f5' : '#171716');
+      intro.dataset.particleRgb = useLight ? '250,249,245' : '23,23,22';
+    } catch { intro.dataset.particleRgb = '250,249,245'; }
+  };
+  media.addEventListener(isVideo ? 'loadeddata' : 'load', sample, { once: true });
+  if (isVideo) media.play().catch(() => {});
+  window.setInterval(sample, 2400);
 }
 
 function setupParticles(intro) {
@@ -121,6 +176,7 @@ function setupParticles(intro) {
   intro.addEventListener('pointerleave', () => { pointer.active = false; });
   const draw = () => {
     context.clearRect(0, 0, width, height);
+    const particleRgb = intro.dataset.particleRgb || '23,23,22';
     frame += .0032;
     const flowWidth = width * .7;
     const flowLeft = width * .15;
@@ -140,7 +196,7 @@ function setupParticles(intro) {
       const y = baseY + Math.sin(rippleDirection) * scatterMotion;
       context.beginPath();
       context.arc(x, y, particle.size, 0, Math.PI * 2);
-      context.fillStyle = `rgba(23,23,22,${particle.alpha})`;
+      context.fillStyle = `rgba(${particleRgb},${particle.alpha})`;
       context.fill();
     });
     requestAnimationFrame(draw);
@@ -148,6 +204,6 @@ function setupParticles(intro) {
   draw();
 }
 
-getProjects().then((projects) => { renderList(projects); renderProject(projects); setupMotion(); }).catch((error) => {
+Promise.all([getProjects(), getHomeSettings()]).then(([projects, settings]) => { renderList(projects); renderProject(projects); setupHomeBackground(settings); setupMotion(); }).catch((error) => {
   document.querySelectorAll('[data-project-list],[data-project-detail]').forEach((target) => { target.innerHTML = `<p class="loading">${escapeHtml(error.message)}</p>`; });
 });
