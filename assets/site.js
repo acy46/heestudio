@@ -73,7 +73,7 @@ function setupMotion() {
   scrollStyle.textContent = `@keyframes paragraph-reveal{from{opacity:0;transform:translateY(12px)}to{opacity:.82;transform:translateY(0)}}.project-description span{position:relative;display:block;opacity:0;animation:paragraph-reveal .75s cubic-bezier(.22,.61,.36,1) forwards;animation-delay:calc(.48s + var(--paragraph-index)*.14s);transition:opacity .35s ease,transform .45s cubic-bezier(.22,.61,.36,1),color .35s ease}.project-description span+span{margin-top:1.3em}.project-description span::before{content:"—";position:absolute;left:-26px;opacity:0;transform:translateX(-7px);transition:opacity .35s ease,transform .45s cubic-bezier(.22,.61,.36,1)}@media(hover:hover){.project-description:has(span:hover) span:not(:hover){opacity:.35!important}.project-description span:hover{opacity:1!important;transform:translateX(12px);color:#171716}.project-description span:hover::before{opacity:1;transform:translateX(0)}}.project-gallery.card-carousel{--card-width:min(50vw,600px);position:relative;display:block;max-width:none;height:min(64vw,768px);overflow:hidden;perspective:1400px}.project-gallery.card-carousel img{position:absolute;top:0;left:50%;width:var(--card-width);height:auto;grid-column:auto!important;aspect-ratio:4/5!important;object-fit:cover;opacity:0;transform:translateX(-50%) scale(.72);filter:grayscale(1);transition:transform .8s cubic-bezier(.22,.61,.36,1),opacity .65s ease,filter .65s ease;animation:none;user-select:none;pointer-events:none}.project-gallery.card-carousel img.is-current{opacity:1;transform:translateX(-50%) scale(1);filter:grayscale(0);z-index:3;pointer-events:auto;cursor:default}.project-gallery.card-carousel img.is-left{opacity:.54;transform:translateX(-122%) scale(.84) rotateY(-18deg);transform-origin:right center;z-index:1;pointer-events:auto;cursor:pointer}.project-gallery.card-carousel img.is-right{opacity:.54;transform:translateX(22%) scale(.84) rotateY(18deg);transform-origin:left center;z-index:1;pointer-events:auto;cursor:pointer}@media(max-width:700px){.project-gallery.card-carousel{--card-width:72vw;height:91vw}.project-gallery.card-carousel img.is-left{transform:translateX(-116%) scale(.86) rotateY(-13deg)}.project-gallery.card-carousel img.is-right{transform:translateX(16%) scale(.86) rotateY(13deg)}}`;
   document.head.appendChild(scrollStyle);
   const copyMotionStyle = document.createElement('style');
-  copyMotionStyle.textContent = `@keyframes paragraph-fade{from{opacity:0}to{opacity:.82}}.project-description span{animation-name:paragraph-fade;transform:translate3d(0,0,0);will-change:transform,opacity;transition:transform .72s cubic-bezier(.16,1,.3,1),opacity .65s cubic-bezier(.16,1,.3,1),color .65s ease}.project-description span::before{transform:translate3d(-9px,0,0);transition:transform .72s cubic-bezier(.16,1,.3,1),opacity .6s ease}@media(hover:hover){.project-description:has(span:hover) span:not(:hover){opacity:.48!important;transform:translate3d(-2px,0,0)}.project-description span:hover{opacity:1!important;transform:translate3d(14px,0,0)}.project-description span:hover::before{opacity:1;transform:translate3d(0,0,0)}}`;
+  copyMotionStyle.textContent = `.project-description span{opacity:1;animation:none;transform:translate3d(0,0,0);will-change:transform;transition:transform .3s cubic-bezier(.22,.61,.36,1)}.project-description span::before{transform:translate3d(-7px,0,0);transition:transform .3s cubic-bezier(.22,.61,.36,1),opacity .2s ease}@media(hover:hover){.project-description:has(span:hover) span:not(:hover){opacity:1!important;transform:translate3d(0,0,0)}.project-description span:hover{opacity:1!important;transform:translate3d(12px,0,0)}.project-description span:hover::before{opacity:1;transform:translate3d(0,0,0)}}`;
   document.head.appendChild(copyMotionStyle);
   const interactionStyle = document.createElement('style');
   interactionStyle.textContent = `.intro{--home-foreground:#171716;position:relative;overflow:hidden;isolation:isolate;transition:color .6s ease}.intro>*:not(.particle-field):not(.home-background){position:relative;z-index:2}.intro.has-home-background h1,.intro.has-home-background .eyebrow,.intro.has-home-background .intro-note{color:var(--home-foreground);transition:color .6s ease,text-shadow .6s ease}.intro.has-home-background h1{text-shadow:0 1px 20px rgba(0,0,0,.08)}.home-background{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}`;
@@ -144,15 +144,17 @@ function setupParticles(intro) {
   canvas.setAttribute('aria-hidden', 'true');
   intro.prepend(canvas);
   const context = canvas.getContext('2d');
-  const particles = Array.from({ length: 430 }, () => ({
+  const riverGlyphs = [...'河川流水波潮溪泉'];
+  const particles = Array.from({ length: 300 }, () => ({
     flow: Math.random(),
     bank: (Math.random() - .5) * 2,
     drift: Math.random() * Math.PI * 2,
+    glyph: riverGlyphs[Math.floor(Math.random() * riverGlyphs.length)],
     scatterAngle: Math.random() * Math.PI * 2,
     scatterDistance: Math.random() * 42 + 16,
     scatter: 0,
-    size: Math.random() * 1.55 + .48,
-    alpha: Math.random() * .36 + .24
+    size: Math.random() * 5 + 7,
+    alpha: Math.random() * .32 + .16
   }));
   const pointer = { x: .5, y: .45, active: false };
   let width = 0;
@@ -197,10 +199,11 @@ function setupParticles(intro) {
       const scatterMotion = particle.scatter * particle.scatterDistance;
       const x = baseX + Math.cos(rippleDirection) * scatterMotion;
       const y = baseY + Math.sin(rippleDirection) * scatterMotion;
-      context.beginPath();
-      context.arc(x, y, particle.size, 0, Math.PI * 2);
       context.fillStyle = `rgba(${particleRgb},${particle.alpha})`;
-      context.fill();
+      context.font = `${particle.size}px "Songti SC","Noto Serif CJK SC","STSong",serif`;
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(particle.glyph, x, y);
     });
     requestAnimationFrame(draw);
   };
