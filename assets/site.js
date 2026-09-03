@@ -23,26 +23,39 @@ function renderProject(projects) {
   if (!project) { target.innerHTML = '<p class="loading">This project does not exist yet.</p>'; return; }
   document.title = `${project.title} — HEEs Studio`;
   const images = (project.images || []).map((image) => `<img src="${safeImage(image)}" alt="${escapeHtml(project.title)}" loading="lazy">`).join('');
-  const savedLayout = localStorage.getItem(`hees-layout-${project.slug}`) || project.layout || 'collage';
-  target.innerHTML = `<a class="project-back" href="index.html#work">← All work</a><div class="project-meta-line"><span>${escapeHtml(project.year || '')}</span><span>${escapeHtml(project.category || 'Collection')}</span></div><h1>${escapeHtml(project.title)}</h1>${project.description ? `<p class="project-description">${escapeHtml(project.description)}</p>` : ''}<div class="layout-switch" aria-label="Image layout"><span>Layout</span><button type="button" data-layout="collage">Collage</button><button type="button" data-layout="grid">Grid</button><button type="button" data-layout="story">Story</button></div><section class="project-gallery layout-${savedLayout}" aria-label="${escapeHtml(project.title)} gallery">${images || '<p class="empty-gallery">Images coming soon</p>'}</section>`;
-  target.querySelectorAll('[data-layout]').forEach((button) => button.addEventListener('click', () => {
-    const layout = button.dataset.layout;
-    const gallery = target.querySelector('.project-gallery');
-    gallery.classList.remove('layout-collage', 'layout-grid', 'layout-story');
-    gallery.classList.add(`layout-${layout}`);
-    localStorage.setItem(`hees-layout-${project.slug}`, layout);
-    target.querySelectorAll('[data-layout]').forEach((item) => item.classList.toggle('is-active', item === button));
-  }));
-  target.querySelector(`[data-layout="${savedLayout}"]`)?.classList.add('is-active');
+  target.innerHTML = `<a class="project-back" href="index.html#work">← All work</a><div class="project-meta-line"><span>${escapeHtml(project.year || '')}</span><span>${escapeHtml(project.category || 'Collection')}</span></div><h1>${escapeHtml(project.title)}</h1>${project.description ? `<p class="project-description">${escapeHtml(project.description)}</p>` : ''}<section class="project-gallery card-carousel" aria-label="${escapeHtml(project.title)} gallery">${images || '<p class="empty-gallery">Images coming soon</p>'}</section>`;
+  const description = target.querySelector('.project-description');
+  if (description && project.description.includes('\n')) description.innerHTML = project.description.split(/\n\s*\n/).filter(Boolean).map((paragraph) => `<span>${escapeHtml(paragraph)}</span>`).join('');
+  setupCardCarousel(target.querySelector('.card-carousel'));
+}
+
+function setupCardCarousel(gallery) {
+  const cards = [...gallery.querySelectorAll('img')];
+  if (cards.length < 2) return;
+  let current = 0;
+  let paused = false;
+  const select = (index, smooth = true) => {
+    current = (index + cards.length) % cards.length;
+    cards.forEach((card, cardIndex) => card.classList.toggle('is-current', cardIndex === current));
+    gallery.scrollTo({ left: cards[current].offsetLeft - (gallery.clientWidth - cards[current].clientWidth) / 2, behavior: smooth ? 'smooth' : 'auto' });
+  };
+  const closestCard = () => cards.reduce((closest, card, index) => Math.abs(card.offsetLeft + card.clientWidth / 2 - (gallery.scrollLeft + gallery.clientWidth / 2)) < Math.abs(cards[closest].offsetLeft + cards[closest].clientWidth / 2 - (gallery.scrollLeft + gallery.clientWidth / 2)) ? index : closest, 0);
+  let timer;
+  const start = () => { clearInterval(timer); if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) timer = setInterval(() => { if (!paused) select(current + 1); }, 3600); };
+  gallery.addEventListener('scroll', () => { window.clearTimeout(gallery._snapTimer); gallery._snapTimer = window.setTimeout(() => { current = closestCard(); cards.forEach((card, index) => card.classList.toggle('is-current', index === current)); }, 100); }, { passive: true });
+  gallery.addEventListener('pointerenter', () => { paused = true; });
+  gallery.addEventListener('pointerleave', () => { paused = false; });
+  select(0, false);
+  start();
 }
 
 function setupMotion() {
   const style = document.createElement('style');
   style.textContent = `@keyframes hees-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } } @keyframes hees-image { from { opacity: 0; transform: scale(1.025); } to { opacity: 1; transform: scale(1); } } .motion-intro { opacity: 0; animation: hees-rise .85s cubic-bezier(.22,.61,.36,1) forwards; } .motion-intro:nth-child(1) { animation-delay: .08s; } .motion-intro:nth-child(2) { animation-delay: .2s; } .motion-intro:nth-child(3) { animation-delay: .34s; } .motion-reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1); } .motion-reveal.is-visible { opacity: 1; transform: translateY(0); } .project-row { transition: padding .35s cubic-bezier(.22,.61,.36,1), background-color .35s ease; } .project-row:hover { background: rgba(23,23,22,.035); } .project-arrow { transition: transform .35s cubic-bezier(.22,.61,.36,1); } .project-row:hover .project-arrow { transform: translate(5px,-5px); } .project-gallery img { opacity: 0; animation: hees-image .9s cubic-bezier(.22,.61,.36,1) forwards; } .project-gallery img:nth-child(2) { animation-delay: .12s; } .project-gallery img:nth-child(3) { animation-delay: .2s; } .project-gallery img:nth-child(4) { animation-delay: .28s; } @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }`;
   document.head.appendChild(style);
-  const layoutStyle = document.createElement('style');
-  layoutStyle.textContent = `.layout-switch{display:flex;align-items:center;gap:8px;max-width:620px;margin:0 0 18px 34%;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#77756f}.layout-switch span{margin-right:6px}.layout-switch button{border:0;background:none;padding:3px 0;color:inherit;font:inherit;cursor:pointer}.layout-switch button.is-active{color:#171716;text-decoration:underline;text-underline-offset:4px}.project-gallery.layout-collage{grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}.project-gallery.layout-collage img{grid-column:span 5!important;aspect-ratio:4/5!important}.project-gallery.layout-collage img:nth-child(1){grid-column:span 7!important;aspect-ratio:16/10!important}.project-gallery.layout-collage img:nth-child(2){grid-column:8/span 5!important;margin-top:-6vw}.project-gallery.layout-collage img:nth-child(3){grid-column:span 4!important;margin-top:4vw}.project-gallery.layout-collage img:nth-child(4){grid-column:span 8!important;aspect-ratio:16/10!important}.project-gallery.layout-story{grid-template-columns:1fr;max-width:780px}.project-gallery.layout-story img{grid-column:auto!important;aspect-ratio:auto!important}.project-gallery.layout-grid img{grid-column:auto!important;aspect-ratio:4/5!important}@media(max-width:700px){.layout-switch{margin-left:0}.project-gallery.layout-collage{grid-template-columns:1fr}.project-gallery.layout-collage img,.project-gallery.layout-collage img:nth-child(n){grid-column:auto!important;margin-top:0;aspect-ratio:4/5!important}.project-gallery.layout-collage img:first-child{aspect-ratio:16/10!important}}`;
-  document.head.appendChild(layoutStyle);
+  const scrollStyle = document.createElement('style');
+  scrollStyle.textContent = `.project-description span{display:block}.project-description span+span{margin-top:1.3em}.project-gallery.card-carousel{display:flex;max-width:none;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;gap:18px;padding:26px max(8vw,32px) 32px}.project-gallery.card-carousel::-webkit-scrollbar{display:none}.project-gallery.card-carousel img{flex:0 0 min(52vw,620px);width:min(52vw,620px);grid-column:auto!important;aspect-ratio:4/5!important;object-fit:cover;scroll-snap-align:center;opacity:.38;transform:scale(.88);filter:grayscale(1);transition:transform .75s cubic-bezier(.22,.61,.36,1),opacity .6s ease,filter .6s ease;animation:none}.project-gallery.card-carousel img.is-current{opacity:1;transform:scale(1);filter:grayscale(0)}@media(max-width:700px){.project-gallery.card-carousel{gap:12px;padding:18px 9vw 28px}.project-gallery.card-carousel img{flex-basis:76vw;width:76vw;transform:scale(.9)}}`;
+  document.head.appendChild(scrollStyle);
   const interactionStyle = document.createElement('style');
   interactionStyle.textContent = `.intro{position:relative;overflow:hidden;isolation:isolate}.intro>*:not(.particle-field){position:relative;z-index:1}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}`;
   document.head.appendChild(interactionStyle);
