@@ -76,7 +76,7 @@ function setupMotion() {
   copyMotionStyle.textContent = `.project-description span{opacity:1;animation:none;transform:translate3d(0,0,0);will-change:transform;transition:transform .3s cubic-bezier(.22,.61,.36,1)}.project-description span::before{transform:translate3d(-7px,0,0);transition:transform .3s cubic-bezier(.22,.61,.36,1),opacity .2s ease}@media(hover:hover){.project-description:has(span:hover) span:not(:hover){opacity:1!important;transform:translate3d(0,0,0)}.project-description span:hover{opacity:1!important;transform:translate3d(12px,0,0)}.project-description span:hover::before{opacity:1;transform:translate3d(0,0,0)}}`;
   document.head.appendChild(copyMotionStyle);
   const interactionStyle = document.createElement('style');
-  interactionStyle.textContent = `.intro{--home-foreground:#171716;position:relative;overflow:hidden;isolation:isolate;transition:color .6s ease}.intro>*:not(.particle-field):not(.home-background){position:relative;z-index:2}.intro.has-home-background h1,.intro.has-home-background .eyebrow,.intro.has-home-background .intro-note{color:var(--home-foreground);transition:color .6s ease,text-shadow .6s ease}.intro.has-home-background h1{text-shadow:0 1px 20px rgba(0,0,0,.08)}.home-background{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}`;
+  interactionStyle.textContent = `body.has-home-background{--home-foreground:#171716;position:relative;isolation:isolate}.home-background{position:absolute;top:0;left:0;width:100%;height:var(--home-cover-height,100svh);object-fit:cover;z-index:0}.site-header,main,footer{position:relative;z-index:1}body.has-home-background .site-header{color:var(--home-foreground);border-color:rgba(127,127,127,.32);transition:color .6s ease}body.has-home-background .site-header nav a{color:var(--home-foreground);opacity:.68}body.has-home-background .site-header nav a:hover{color:var(--home-foreground);opacity:1}.intro{--home-foreground:#171716;position:relative;min-height:calc(100svh - 66px);overflow:hidden;isolation:isolate;transition:color .6s ease}.intro>*:not(.particle-field){position:relative;z-index:2}body.has-home-background .intro h1,body.has-home-background .intro .eyebrow,body.has-home-background .intro .intro-note{color:var(--home-foreground);transition:color .6s ease,text-shadow .6s ease}body.has-home-background .intro h1{text-shadow:0 1px 20px rgba(0,0,0,.08)}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}`;
   document.head.appendChild(interactionStyle);
   const intro = document.querySelector('.intro');
   if (intro) {
@@ -108,8 +108,15 @@ function setupHomeBackground(settings) {
     media.src = path;
     media.alt = '';
   }
-  intro.prepend(media);
+  document.body.prepend(media);
   intro.classList.add('has-home-background');
+  document.body.classList.add('has-home-background');
+  const sizeCover = () => {
+    const header = document.querySelector('.site-header');
+    document.body.style.setProperty('--home-cover-height', `${(header?.offsetHeight || 0) + intro.offsetHeight}px`);
+  };
+  new ResizeObserver(sizeCover).observe(intro);
+  sizeCover();
   const sample = () => {
     if ((isVideo && media.readyState < 2) || (!isVideo && !media.complete)) return;
     try {
@@ -129,6 +136,7 @@ function setupHomeBackground(settings) {
       }
       const useLight = luminance / count < 142;
       intro.style.setProperty('--home-foreground', useLight ? '#faf9f5' : '#171716');
+      document.body.style.setProperty('--home-foreground', useLight ? '#faf9f5' : '#171716');
       intro.dataset.particleRgb = useLight ? '250,249,245' : '23,23,22';
     } catch { intro.dataset.particleRgb = '250,249,245'; }
   };
@@ -145,7 +153,7 @@ function setupParticles(intro) {
   intro.prepend(canvas);
   const context = canvas.getContext('2d');
   const riverGlyphs = [...'河川流水波潮溪泉'];
-  const particles = Array.from({ length: 300 }, () => ({
+  const particles = Array.from({ length: 520 }, () => ({
     flow: Math.random(),
     bank: (Math.random() - .5) * 2,
     drift: Math.random() * Math.PI * 2,
@@ -153,8 +161,8 @@ function setupParticles(intro) {
     scatterAngle: Math.random() * Math.PI * 2,
     scatterDistance: Math.random() * 42 + 16,
     scatter: 0,
-    size: Math.random() * 5 + 7,
-    alpha: Math.random() * .32 + .16
+    size: Math.random() * 7 + 8,
+    alpha: Math.random() * .32 + .15
   }));
   const pointer = { x: .5, y: .45, active: false };
   let width = 0;
@@ -183,13 +191,13 @@ function setupParticles(intro) {
     context.clearRect(0, 0, width, height);
     const particleRgb = intro.dataset.particleRgb || '23,23,22';
     frame += .0032;
-    const flowWidth = width * .7;
-    const flowLeft = width * .15;
+    const flowWidth = width * 1.16;
+    const flowLeft = width * -.08;
     const centerY = height * .43;
     particles.forEach((particle) => {
       const flow = (particle.flow + frame * .16) % 1;
-      const riverWidth = Math.min(height * .105, 64) * (.6 + Math.sin(flow * Math.PI) * .5);
-      const centerline = centerY + Math.sin(flow * 5.1 + .3) * height * .07 + Math.sin(flow * 14 + .7) * height * .012;
+      const riverWidth = Math.min(height * .17, 120) * (.62 + Math.sin(flow * Math.PI) * .5);
+      const centerline = centerY + Math.sin(flow * 5.1 + .3) * height * .095 + Math.sin(flow * 14 + .7) * height * .018;
       const baseX = flowLeft + flow * flowWidth + Math.sin(particle.drift + frame * 3) * .8;
       const baseY = centerline + particle.bank * riverWidth;
       const pointerDistance = Math.hypot(pointer.x * width - baseX, pointer.y * height - baseY);
