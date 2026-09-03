@@ -34,18 +34,44 @@ function setupCardCarousel(gallery) {
   if (cards.length < 2) return;
   let current = 0;
   let paused = false;
+  let drag = null;
+  const updateCardStates = () => cards.forEach((card, cardIndex) => {
+    const offset = cardIndex - current;
+    card.classList.toggle('is-current', offset === 0);
+    card.classList.toggle('is-left', offset === -1);
+    card.classList.toggle('is-right', offset === 1);
+  });
   const select = (index, smooth = true) => {
     current = (index + cards.length) % cards.length;
-    cards.forEach((card, cardIndex) => card.classList.toggle('is-current', cardIndex === current));
+    updateCardStates();
     gallery.scrollTo({ left: cards[current].offsetLeft - (gallery.clientWidth - cards[current].clientWidth) / 2, behavior: smooth ? 'smooth' : 'auto' });
   };
   const closestCard = () => cards.reduce((closest, card, index) => Math.abs(card.offsetLeft + card.clientWidth / 2 - (gallery.scrollLeft + gallery.clientWidth / 2)) < Math.abs(cards[closest].offsetLeft + cards[closest].clientWidth / 2 - (gallery.scrollLeft + gallery.clientWidth / 2)) ? index : closest, 0);
   let timer;
   const start = () => { clearInterval(timer); if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) timer = setInterval(() => { if (!paused) select(current + 1); }, 3600); };
-  gallery.addEventListener('scroll', () => { window.clearTimeout(gallery._snapTimer); gallery._snapTimer = window.setTimeout(() => { current = closestCard(); cards.forEach((card, index) => card.classList.toggle('is-current', index === current)); }, 100); }, { passive: true });
+  gallery.addEventListener('scroll', () => { window.clearTimeout(gallery._snapTimer); gallery._snapTimer = window.setTimeout(() => { current = closestCard(); updateCardStates(); }, 100); }, { passive: true });
   gallery.addEventListener('pointerenter', () => { paused = true; });
   gallery.addEventListener('pointerleave', () => { paused = false; });
-  select(0, false);
+  gallery.addEventListener('pointerdown', (event) => {
+    drag = { x: event.clientX, scrollLeft: gallery.scrollLeft };
+    paused = true;
+    gallery.classList.add('is-dragging');
+    gallery.setPointerCapture(event.pointerId);
+  });
+  gallery.addEventListener('pointermove', (event) => {
+    if (!drag) return;
+    gallery.scrollLeft = drag.scrollLeft - (event.clientX - drag.x);
+  });
+  const finishDrag = () => {
+    if (!drag) return;
+    drag = null;
+    paused = false;
+    gallery.classList.remove('is-dragging');
+    select(closestCard());
+  };
+  gallery.addEventListener('pointerup', finishDrag);
+  gallery.addEventListener('pointercancel', finishDrag);
+  requestAnimationFrame(() => requestAnimationFrame(() => select(0, false)));
   start();
 }
 
@@ -54,7 +80,7 @@ function setupMotion() {
   style.textContent = `@keyframes hees-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } } @keyframes hees-image { from { opacity: 0; transform: scale(1.025); } to { opacity: 1; transform: scale(1); } } .motion-intro { opacity: 0; animation: hees-rise .85s cubic-bezier(.22,.61,.36,1) forwards; } .motion-intro:nth-child(1) { animation-delay: .08s; } .motion-intro:nth-child(2) { animation-delay: .2s; } .motion-intro:nth-child(3) { animation-delay: .34s; } .motion-reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1); } .motion-reveal.is-visible { opacity: 1; transform: translateY(0); } .project-row { transition: padding .35s cubic-bezier(.22,.61,.36,1), background-color .35s ease; } .project-row:hover { background: rgba(23,23,22,.035); } .project-arrow { transition: transform .35s cubic-bezier(.22,.61,.36,1); } .project-row:hover .project-arrow { transform: translate(5px,-5px); } .project-gallery img { opacity: 0; animation: hees-image .9s cubic-bezier(.22,.61,.36,1) forwards; } .project-gallery img:nth-child(2) { animation-delay: .12s; } .project-gallery img:nth-child(3) { animation-delay: .2s; } .project-gallery img:nth-child(4) { animation-delay: .28s; } @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }`;
   document.head.appendChild(style);
   const scrollStyle = document.createElement('style');
-  scrollStyle.textContent = `.project-description span{display:block}.project-description span+span{margin-top:1.3em}.project-gallery.card-carousel{display:flex;max-width:none;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;gap:18px;padding:26px max(8vw,32px) 32px}.project-gallery.card-carousel::-webkit-scrollbar{display:none}.project-gallery.card-carousel img{flex:0 0 min(52vw,620px);width:min(52vw,620px);grid-column:auto!important;aspect-ratio:4/5!important;object-fit:cover;scroll-snap-align:center;opacity:.38;transform:scale(.88);filter:grayscale(1);transition:transform .75s cubic-bezier(.22,.61,.36,1),opacity .6s ease,filter .6s ease;animation:none}.project-gallery.card-carousel img.is-current{opacity:1;transform:scale(1);filter:grayscale(0)}@media(max-width:700px){.project-gallery.card-carousel{gap:12px;padding:18px 9vw 28px}.project-gallery.card-carousel img{flex-basis:76vw;width:76vw;transform:scale(.9)}}`;
+  scrollStyle.textContent = `.project-description span{display:block}.project-description span+span{margin-top:1.3em}.project-gallery.card-carousel{display:flex;max-width:none;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;gap:18px;padding:26px max(8vw,32px) 32px;cursor:grab;perspective:1200px}.project-gallery.card-carousel.is-dragging{cursor:grabbing;scroll-snap-type:none}.project-gallery.card-carousel::-webkit-scrollbar{display:none}.project-gallery.card-carousel img{flex:0 0 min(52vw,620px);width:min(52vw,620px);grid-column:auto!important;aspect-ratio:4/5!important;object-fit:cover;scroll-snap-align:center;opacity:.28;transform:scale(.8);filter:grayscale(1);transition:transform .75s cubic-bezier(.22,.61,.36,1),opacity .6s ease,filter .6s ease;animation:none;user-select:none}.project-gallery.card-carousel img.is-current{opacity:1;transform:scale(1);filter:grayscale(0);z-index:2}.project-gallery.card-carousel img.is-left{opacity:.58;transform:scale(.88) rotateY(18deg);transform-origin:right center}.project-gallery.card-carousel img.is-right{opacity:.58;transform:scale(.88) rotateY(-18deg);transform-origin:left center}@media(max-width:700px){.project-gallery.card-carousel{gap:12px;padding:18px 9vw 28px}.project-gallery.card-carousel img{flex-basis:76vw;width:76vw;transform:scale(.84)}.project-gallery.card-carousel img.is-left{transform:scale(.9) rotateY(13deg)}.project-gallery.card-carousel img.is-right{transform:scale(.9) rotateY(-13deg)}}`;
   document.head.appendChild(scrollStyle);
   const interactionStyle = document.createElement('style');
   interactionStyle.textContent = `.intro{position:relative;overflow:hidden;isolation:isolate}.intro>*:not(.particle-field){position:relative;z-index:1}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}`;
