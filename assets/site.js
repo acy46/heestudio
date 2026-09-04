@@ -88,7 +88,7 @@ function setupMotion() {
   copyMotionStyle.textContent = `.project-description span{opacity:1;animation:none;transform:translate3d(0,0,0);will-change:transform;transition:transform .3s cubic-bezier(.22,.61,.36,1)}.project-description span::before{transform:translate3d(-7px,0,0);transition:transform .3s cubic-bezier(.22,.61,.36,1),opacity .2s ease}@media(hover:hover){.project-description:has(span:hover) span:not(:hover){opacity:1!important;transform:translate3d(0,0,0)}.project-description span:hover{opacity:1!important;color:var(--ink);transform:translate3d(12px,0,0)}.project-description span:hover::before{opacity:1;transform:translate3d(0,0,0)}}`;
   document.head.appendChild(copyMotionStyle);
   const signatureStyle = document.createElement('style');
-  signatureStyle.textContent = `@keyframes background-breathe{0%,100%{transform:translate3d(var(--bg-x,0),var(--bg-y,0),0) scale(1.035)}50%{transform:translate3d(var(--bg-x,0),var(--bg-y,0),0) scale(1.065)}}.home-background{animation:background-breathe 13s ease-in-out infinite;will-change:transform}.card-carousel.is-changing[data-direction="next"] img.is-current{transform:translateX(-58%) scale(.94) rotateY(-5deg);filter:grayscale(.35)}.card-carousel.is-changing[data-direction="previous"] img.is-current{transform:translateX(-42%) scale(.94) rotateY(5deg);filter:grayscale(.35)}@media(prefers-reduced-motion:reduce){.home-background{animation:none}}`;
+  signatureStyle.textContent = `.card-carousel.is-changing[data-direction="next"] img.is-current{transform:translateX(-58%) scale(.94) rotateY(-5deg);filter:grayscale(.35)}.card-carousel.is-changing[data-direction="previous"] img.is-current{transform:translateX(-42%) scale(.94) rotateY(5deg);filter:grayscale(.35)}`;
   document.head.appendChild(signatureStyle);
   const themeStyle = document.createElement('style');
   themeStyle.textContent = `:root{--particle-rgb:23,23,22;color-scheme:light dark;scrollbar-width:none}::-webkit-scrollbar{width:0;height:0}.minimal-scrollbar{position:fixed;top:0;right:1px;width:1px;min-height:26px;background:var(--ink);opacity:0;pointer-events:none;z-index:9999;transition:opacity .48s ease}@media(prefers-color-scheme:dark){:root{--ink:#f5f3ed;--paper:#11110f;--soft:#30302d;--muted:#aaa8a1;--particle-rgb:245,243,237}html,body,.projects,.project-page,.text-page,footer{background:var(--paper);color:var(--ink)}.project-row:hover{background:rgba(255,255,255,.045)}.gallery-nav button{color:var(--ink);border-color:var(--soft)}}.river-section{position:relative;min-height:52vh;overflow:hidden;border-top:1px solid var(--soft);background:var(--paper)}.river-section .particle-field{z-index:0}@media(max-width:700px){.minimal-scrollbar{display:none}.river-section{min-height:42vh}}`;
@@ -166,17 +166,6 @@ function setupHomeBackground(settings) {
   };
   new ResizeObserver(sizeCover).observe(intro);
   sizeCover();
-  intro.addEventListener('pointermove', (event) => {
-    const bounds = intro.getBoundingClientRect();
-    const x = ((event.clientX - bounds.left) / bounds.width - .5) * -14;
-    const y = ((event.clientY - bounds.top) / bounds.height - .5) * -10;
-    document.body.style.setProperty('--bg-x', `${x}px`);
-    document.body.style.setProperty('--bg-y', `${y}px`);
-  });
-  intro.addEventListener('pointerleave', () => {
-    document.body.style.setProperty('--bg-x', '0px');
-    document.body.style.setProperty('--bg-y', '0px');
-  });
   const sample = () => {
     if ((isVideo && media.readyState < 2) || (!isVideo && !media.complete)) return;
     try {
@@ -212,35 +201,40 @@ function setupParticles(intro) {
   canvas.setAttribute('aria-hidden', 'true');
   intro.prepend(canvas);
   const context = canvas.getContext('2d');
-  const particles = Array.from({ length: 920 }, () => ({
+  const particles = Array.from({ length: 1450 }, () => ({
     flow: Math.random(),
     bank: (Math.random() - .5) * 2,
     drift: Math.random() * Math.PI * 2,
     textX: 0,
     textY: 0,
     morph: 0,
-    size: .85,
-    alpha: .38
+    size: .72,
+    alpha: .34
   }));
   const pointer = { x: .5, y: .45, active: false };
   let width = 0;
   let height = 0;
   let ratio = 1;
   let frame = 0;
-  const assignTextTargets = () => {
+  const phrases = ['命运是我所踏涉的河', 'Fate is the river I wade through'];
+  let activePhrase = phrases[0];
+  let nextPhrase = 0;
+  const assignTextTargets = (text = activePhrase) => {
+    activePhrase = text;
     const map = document.createElement('canvas');
     map.width = Math.max(1, Math.round(width));
     map.height = Math.max(1, Math.round(height));
     const mapContext = map.getContext('2d', { willReadFrequently: true });
-    const fontSize = Math.min(width * .062, 62);
+    const isChinese = /[\u3400-\u9fff]/.test(text);
+    const fontSize = Math.min(width * (isChinese ? .062 : .043), isChinese ? 62 : 48);
     mapContext.fillStyle = '#000';
-    mapContext.font = `400 ${fontSize}px "Songti SC","STSong","Noto Serif CJK SC",Georgia,serif`;
+    mapContext.font = isChinese ? `400 ${fontSize}px "Songti SC","STSong","Noto Serif CJK SC",Georgia,serif` : `400 ${fontSize}px "Libre Baskerville",Georgia,serif`;
     mapContext.textAlign = 'center';
     mapContext.textBaseline = 'middle';
-    mapContext.fillText('命运是我所踏涉的河', width / 2, height * .46);
+    mapContext.fillText(text, width / 2, height * .46);
     const pixels = mapContext.getImageData(0, 0, map.width, map.height).data;
     const points = [];
-    const step = width < 700 ? 3 : 4;
+    const step = 2;
     for (let y = 0; y < map.height; y += step) for (let x = 0; x < map.width; x += step) if (pixels[(y * map.width + x) * 4 + 3] > 90) points.push({ x, y });
     for (let index = points.length - 1; index > 0; index -= 1) {
       const swap = Math.floor(Math.random() * (index + 1));
@@ -264,6 +258,11 @@ function setupParticles(intro) {
   };
   new ResizeObserver(resize).observe(intro);
   resize();
+  intro.addEventListener('pointerenter', () => {
+    assignTextTargets(phrases[nextPhrase]);
+    nextPhrase = (nextPhrase + 1) % phrases.length;
+    pointer.active = true;
+  });
   intro.addEventListener('pointermove', (event) => {
     const bounds = intro.getBoundingClientRect();
     pointer.x = (event.clientX - bounds.left) / bounds.width;
@@ -288,9 +287,10 @@ function setupParticles(intro) {
       const easedMorph = particle.morph * particle.morph * (3 - 2 * particle.morph);
       const x = baseX + (particle.textX - baseX) * easedMorph;
       const y = baseY + (particle.textY - baseY) * easedMorph;
+      const drawSize = particle.size + (1.28 - particle.size) * easedMorph;
       context.beginPath();
-      context.arc(x, y, particle.size, 0, Math.PI * 2);
-      context.fillStyle = `rgba(${particleRgb},${particle.alpha})`;
+      context.arc(x, y, drawSize, 0, Math.PI * 2);
+      context.fillStyle = `rgba(${particleRgb},${particle.alpha + easedMorph * .54})`;
       context.fill();
     });
     requestAnimationFrame(draw);
