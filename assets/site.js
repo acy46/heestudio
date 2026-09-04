@@ -76,8 +76,9 @@ function setupMotion() {
   copyMotionStyle.textContent = `.project-description span{opacity:1;animation:none;transform:translate3d(0,0,0);will-change:transform;transition:transform .3s cubic-bezier(.22,.61,.36,1)}.project-description span::before{transform:translate3d(-7px,0,0);transition:transform .3s cubic-bezier(.22,.61,.36,1),opacity .2s ease}@media(hover:hover){.project-description:has(span:hover) span:not(:hover){opacity:1!important;transform:translate3d(0,0,0)}.project-description span:hover{opacity:1!important;color:var(--ink);transform:translate3d(12px,0,0)}.project-description span:hover::before{opacity:1;transform:translate3d(0,0,0)}}`;
   document.head.appendChild(copyMotionStyle);
   const themeStyle = document.createElement('style');
-  themeStyle.textContent = `:root{--particle-rgb:23,23,22;color-scheme:light dark;scrollbar-width:thin;scrollbar-color:var(--ink) var(--paper)}::-webkit-scrollbar{width:3px;height:3px}::-webkit-scrollbar-track{background:var(--paper)}::-webkit-scrollbar-thumb{background:var(--ink);border:0;border-radius:0}.river-section{position:relative;min-height:52vh;overflow:hidden;border-top:1px solid var(--soft);background:var(--paper)}.river-section .particle-field{z-index:0}@media(prefers-color-scheme:dark){:root{--ink:#f5f3ed;--paper:#11110f;--soft:#30302d;--muted:#aaa8a1;--particle-rgb:245,243,237}html,body,.projects,.project-page,.text-page,footer{background:var(--paper);color:var(--ink)}.project-row:hover{background:rgba(255,255,255,.045)}.gallery-nav button{color:var(--ink);border-color:var(--soft)}}@media(max-width:700px){.river-section{min-height:42vh}}`;
+  themeStyle.textContent = `:root{--particle-rgb:23,23,22;color-scheme:light dark;scrollbar-width:none}::-webkit-scrollbar{width:0;height:0}.minimal-scrollbar{position:fixed;top:0;right:1px;width:1px;min-height:26px;background:var(--ink);opacity:0;pointer-events:none;z-index:9999;transition:opacity .48s ease}@media(prefers-color-scheme:dark){:root{--ink:#f5f3ed;--paper:#11110f;--soft:#30302d;--muted:#aaa8a1;--particle-rgb:245,243,237}html,body,.projects,.project-page,.text-page,footer{background:var(--paper);color:var(--ink)}.project-row:hover{background:rgba(255,255,255,.045)}.gallery-nav button{color:var(--ink);border-color:var(--soft)}}.river-section{position:relative;min-height:52vh;overflow:hidden;border-top:1px solid var(--soft);background:var(--paper)}.river-section .particle-field{z-index:0}@media(max-width:700px){.minimal-scrollbar{display:none}.river-section{min-height:42vh}}`;
   document.head.appendChild(themeStyle);
+  setupCustomScrollbar();
   const interactionStyle = document.createElement('style');
   interactionStyle.textContent = `body.has-home-background{--home-foreground:#171716;position:relative;isolation:isolate}.home-background{position:absolute;top:0;left:0;width:100%;height:var(--home-cover-height,100svh);object-fit:cover;z-index:0}.site-header,main,footer{position:relative;z-index:1}body.has-home-background .site-header{color:var(--home-foreground);border-color:rgba(127,127,127,.32);transition:color .6s ease}body.has-home-background .site-header nav a{color:var(--home-foreground);opacity:.68}body.has-home-background .site-header nav a:hover{color:var(--home-foreground);opacity:1}.intro{--home-foreground:#171716;position:relative;min-height:calc(100svh - 66px);overflow:hidden;isolation:isolate;transition:color .6s ease}.intro>*:not(.particle-field){position:relative;z-index:2}body.has-home-background .intro h1,body.has-home-background .intro .eyebrow,body.has-home-background .intro .intro-note{color:var(--home-foreground);transition:color .6s ease,text-shadow .6s ease}body.has-home-background .intro h1{text-shadow:0 1px 20px rgba(0,0,0,.08)}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}`;
   document.head.appendChild(interactionStyle);
@@ -86,7 +87,7 @@ function setupMotion() {
   if (intro && projects) {
     const river = document.createElement('section');
     river.className = 'river-section';
-    river.setAttribute('aria-label', 'Flowing Chinese character river');
+    river.setAttribute('aria-label', 'Interactive particle river');
     projects.insertAdjacentElement('afterend', river);
     setupParticles(river);
   }
@@ -96,6 +97,31 @@ function setupMotion() {
   if (!('IntersectionObserver' in window)) { reveals.forEach((element) => element.classList.add('is-visible')); return; }
   const observer = new IntersectionObserver((entries) => entries.forEach((entry) => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); } }), { threshold: .15 });
   reveals.forEach((element) => observer.observe(element));
+}
+
+function setupCustomScrollbar() {
+  if (window.innerWidth <= 700) return;
+  const thumb = document.createElement('span');
+  thumb.className = 'minimal-scrollbar';
+  thumb.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(thumb);
+  let hideTimer;
+  const update = () => {
+    const pageHeight = document.documentElement.scrollHeight;
+    const viewport = window.innerHeight;
+    if (pageHeight <= viewport) { thumb.style.display = 'none'; return; }
+    thumb.style.display = '';
+    const height = Math.max(26, viewport * viewport / pageHeight);
+    const top = (window.scrollY / (pageHeight - viewport)) * (viewport - height);
+    thumb.style.height = `${height}px`;
+    thumb.style.transform = `translateY(${top}px)`;
+    thumb.style.opacity = '1';
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => { thumb.style.opacity = '0'; }, 620);
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update, { passive: true });
+  requestAnimationFrame(update);
 }
 
 function setupHomeBackground(settings) {
@@ -160,20 +186,21 @@ function setupParticles(intro) {
   canvas.setAttribute('aria-hidden', 'true');
   intro.prepend(canvas);
   const context = canvas.getContext('2d');
-  const particles = Array.from({ length: 520 }, () => ({
+  const particles = Array.from({ length: 920 }, () => ({
     flow: Math.random(),
     bank: (Math.random() - .5) * 2,
     drift: Math.random() * Math.PI * 2,
     scatterAngle: Math.random() * Math.PI * 2,
-    scatterDistance: Math.random() * 58 + 24,
+    scatterDistance: Math.random() * 20 + 24,
     scatter: 0,
-    size: 1.6,
-    alpha: .42
+    size: .85,
+    alpha: .38
   }));
   const pointer = { x: .5, y: .45, active: false };
   let width = 0;
   let height = 0;
   let ratio = 1;
+  let frame = 0;
   const resize = () => {
     const bounds = intro.getBoundingClientRect();
     ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -194,24 +221,25 @@ function setupParticles(intro) {
   intro.addEventListener('pointerleave', () => { pointer.active = false; });
   const draw = () => {
     context.clearRect(0, 0, width, height);
+    frame += .0025;
     const particleRgb = intro.dataset.particleRgb || getComputedStyle(document.documentElement).getPropertyValue('--particle-rgb').trim() || '23,23,22';
     const flowWidth = width * 1.16;
     const flowLeft = width * -.08;
     const centerY = height * .43;
     particles.forEach((particle) => {
-      const flow = particle.flow;
+      const flow = (particle.flow + frame * .15) % 1;
       const riverWidth = Math.min(height * .17, 120) * (.62 + Math.sin(flow * Math.PI) * .5);
       const centerline = centerY + Math.sin(flow * 5.1 + .3) * height * .095 + Math.sin(flow * 14 + .7) * height * .018;
-      const baseX = flowLeft + flow * flowWidth + Math.sin(particle.drift) * .8;
+      const baseX = flowLeft + flow * flowWidth + Math.sin(particle.drift + frame * 3) * .55;
       const baseY = centerline + particle.bank * riverWidth;
       const pointerDistance = Math.hypot(pointer.x * width - baseX, pointer.y * height - baseY);
-      const scatterTarget = pointer.active ? Math.max(0, 1 - pointerDistance / 145) : 0;
-      particle.scatter += (scatterTarget - particle.scatter) * .09;
+      const scatterTarget = pointer.active ? Math.max(0, 1 - pointerDistance / 130) : 0;
+      particle.scatter += (scatterTarget - particle.scatter) * .11;
       const rippleDirection = Math.atan2(baseY - pointer.y * height, baseX - pointer.x * width);
-      const diffusionDirection = rippleDirection + Math.sin(particle.scatterAngle) * .72;
-      const scatterMotion = particle.scatter * particle.scatterDistance;
-      const x = baseX + Math.cos(diffusionDirection) * scatterMotion;
-      const y = baseY + Math.sin(diffusionDirection) * scatterMotion;
+      const swirlDirection = rippleDirection + Math.PI / 2;
+      const swirlMotion = particle.scatter * particle.scatterDistance;
+      const x = baseX + Math.cos(swirlDirection) * swirlMotion + Math.cos(rippleDirection) * swirlMotion * .18;
+      const y = baseY + Math.sin(swirlDirection) * swirlMotion + Math.sin(rippleDirection) * swirlMotion * .18;
       context.beginPath();
       context.arc(x, y, particle.size, 0, Math.PI * 2);
       context.fillStyle = `rgba(${particleRgb},${particle.alpha})`;
