@@ -234,10 +234,10 @@ function setupParticles(intro) {
     const mapContext = map.getContext('2d', { willReadFrequently: true });
     const fontSize = Math.min(width * .062, 62);
     mapContext.fillStyle = '#000';
-    mapContext.font = `500 ${fontSize}px "Helvetica Neue",Arial,sans-serif`;
+    mapContext.font = `400 ${fontSize}px "Songti SC","STSong","Noto Serif CJK SC",Georgia,serif`;
     mapContext.textAlign = 'center';
     mapContext.textBaseline = 'middle';
-    mapContext.fillText('HE · 河 · FIRENZE · 2026', width / 2, height * .46);
+    mapContext.fillText('命运是我所踏涉的河', width / 2, height * .46);
     const pixels = mapContext.getImageData(0, 0, map.width, map.height).data;
     const points = [];
     const step = width < 700 ? 3 : 4;
@@ -284,7 +284,7 @@ function setupParticles(intro) {
       const centerline = centerY + Math.sin(flow * 5.1 + .3) * height * .095 + Math.sin(flow * 14 + .7) * height * .018;
       const baseX = flowLeft + flow * flowWidth + Math.sin(particle.drift + frame * 3) * .55;
       const baseY = centerline + particle.bank * riverWidth;
-      particle.morph += ((pointer.active ? 1 : 0) - particle.morph) * .075;
+      particle.morph += ((pointer.active ? 1 : 0) - particle.morph) * .025;
       const easedMorph = particle.morph * particle.morph * (3 - 2 * particle.morph);
       const x = baseX + (particle.textX - baseX) * easedMorph;
       const y = baseY + (particle.textY - baseY) * easedMorph;
