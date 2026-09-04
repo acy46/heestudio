@@ -45,10 +45,9 @@ async function loadData(){
 }
 async function loadApp(){try{await loadData();renderApp();}catch(error){showError(error.message);}}
 function renderApp(){
-  document.getElementById('app').innerHTML=`<div class="shell"><header class="topbar"><strong>HEEs Studio <span>工作室后台</span></strong><button id="logout" class="button">退出登录</button></header><section class="content"><div class="content-head"><div><p class="kicker">PRIVATE STUDIO</p><h1>作品。</h1></div><div class="studio-actions"><button id="home-settings" class="button">首页视觉</button><button id="new-work" class="button dark">＋ 新建作品</button></div></div><div class="works">${projects.length?projects.map((item,index)=>`<div class="work"><small>${String(index+1).padStart(2,'0')}</small><strong>${esc(item.title)}</strong><small>${esc(item.year)}</small><span class="arrow">↗</span></div>`).join(''):'<p class="notice">还没有作品，创建你的第一个作品页面。</p>'}</div></section></div>`;
+  document.getElementById('app').innerHTML=`<div class="shell"><header class="topbar"><strong>HEEs Studio <span>工作室后台</span></strong><button id="logout" class="button">退出登录</button></header><section class="content"><div class="content-head"><div><p class="kicker">PRIVATE STUDIO</p><h1>作品。</h1></div><button id="new-work" class="button dark">＋ 新建作品</button></div><div class="works">${projects.length?projects.map((item,index)=>`<div class="work"><small>${String(index+1).padStart(2,'0')}</small><strong>${esc(item.title)}</strong><small>${esc(item.year)}</small><span class="arrow">↗</span></div>`).join(''):'<p class="notice">还没有作品，创建你的第一个作品页面。</p>'}</div></section></div>`;
   document.getElementById('logout').onclick=()=>{sessionStorage.removeItem(tokenKey);showLogin();};
   document.getElementById('new-work').onclick=showModal;
-  document.getElementById('home-settings').onclick=showHomeSettings;
 }
 function showError(message){document.getElementById('app').innerHTML=`<section class="login-card"><p class="kicker">HEEs Studio · ERROR</p><h1>暂时无法<br><em>读取作品。</em></h1><p class="error">${esc(message)}</p><button class="button" onclick="showLogin()">返回登录</button></section>`;}
 function showModal(){
