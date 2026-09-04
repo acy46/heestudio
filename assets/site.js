@@ -42,6 +42,7 @@ function setupCardCarousel(gallery) {
   if (cards.length < 2) return;
   let current = 0;
   let paused = false;
+  let changing = false;
   const updateCardStates = () => cards.forEach((card, cardIndex) => {
     const left = (current - 1 + cards.length) % cards.length;
     const right = (current + 1) % cards.length;
@@ -49,9 +50,20 @@ function setupCardCarousel(gallery) {
     card.classList.toggle('is-left', cardIndex === left);
     card.classList.toggle('is-right', cardIndex === right);
   });
-  const select = (index) => {
-    current = (index + cards.length) % cards.length;
-    updateCardStates();
+  const select = (index, animate = true) => {
+    const next = (index + cards.length) % cards.length;
+    if (next === current) return;
+    if (!animate) { current = next; updateCardStates(); return; }
+    if (changing) return;
+    changing = true;
+    gallery.dataset.direction = next === (current - 1 + cards.length) % cards.length ? 'previous' : 'next';
+    gallery.classList.add('is-changing');
+    window.setTimeout(() => {
+      current = next;
+      gallery.classList.remove('is-changing');
+      updateCardStates();
+      changing = false;
+    }, 170);
   };
   let timer;
   const start = () => { clearInterval(timer); if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) timer = setInterval(() => { if (!paused) select(current + 1); }, 3600); };
@@ -61,7 +73,7 @@ function setupCardCarousel(gallery) {
   }));
   gallery.addEventListener('pointerenter', () => { paused = true; });
   gallery.addEventListener('pointerleave', () => { paused = false; });
-  select(0);
+  updateCardStates();
   start();
 }
 
@@ -75,6 +87,9 @@ function setupMotion() {
   const copyMotionStyle = document.createElement('style');
   copyMotionStyle.textContent = `.project-description span{opacity:1;animation:none;transform:translate3d(0,0,0);will-change:transform;transition:transform .3s cubic-bezier(.22,.61,.36,1)}.project-description span::before{transform:translate3d(-7px,0,0);transition:transform .3s cubic-bezier(.22,.61,.36,1),opacity .2s ease}@media(hover:hover){.project-description:has(span:hover) span:not(:hover){opacity:1!important;transform:translate3d(0,0,0)}.project-description span:hover{opacity:1!important;color:var(--ink);transform:translate3d(12px,0,0)}.project-description span:hover::before{opacity:1;transform:translate3d(0,0,0)}}`;
   document.head.appendChild(copyMotionStyle);
+  const signatureStyle = document.createElement('style');
+  signatureStyle.textContent = `@keyframes background-breathe{0%,100%{transform:translate3d(var(--bg-x,0),var(--bg-y,0),0) scale(1.035)}50%{transform:translate3d(var(--bg-x,0),var(--bg-y,0),0) scale(1.065)}}.home-background{animation:background-breathe 13s ease-in-out infinite;will-change:transform}.card-carousel.is-changing[data-direction="next"] img.is-current{transform:translateX(-58%) scale(.94) rotateY(-5deg);filter:grayscale(.35)}.card-carousel.is-changing[data-direction="previous"] img.is-current{transform:translateX(-42%) scale(.94) rotateY(5deg);filter:grayscale(.35)}@media(prefers-reduced-motion:reduce){.home-background{animation:none}}`;
+  document.head.appendChild(signatureStyle);
   const themeStyle = document.createElement('style');
   themeStyle.textContent = `:root{--particle-rgb:23,23,22;color-scheme:light dark;scrollbar-width:none}::-webkit-scrollbar{width:0;height:0}.minimal-scrollbar{position:fixed;top:0;right:1px;width:1px;min-height:26px;background:var(--ink);opacity:0;pointer-events:none;z-index:9999;transition:opacity .48s ease}@media(prefers-color-scheme:dark){:root{--ink:#f5f3ed;--paper:#11110f;--soft:#30302d;--muted:#aaa8a1;--particle-rgb:245,243,237}html,body,.projects,.project-page,.text-page,footer{background:var(--paper);color:var(--ink)}.project-row:hover{background:rgba(255,255,255,.045)}.gallery-nav button{color:var(--ink);border-color:var(--soft)}}.river-section{position:relative;min-height:52vh;overflow:hidden;border-top:1px solid var(--soft);background:var(--paper)}.river-section .particle-field{z-index:0}@media(max-width:700px){.minimal-scrollbar{display:none}.river-section{min-height:42vh}}`;
   document.head.appendChild(themeStyle);
@@ -151,6 +166,17 @@ function setupHomeBackground(settings) {
   };
   new ResizeObserver(sizeCover).observe(intro);
   sizeCover();
+  intro.addEventListener('pointermove', (event) => {
+    const bounds = intro.getBoundingClientRect();
+    const x = ((event.clientX - bounds.left) / bounds.width - .5) * -14;
+    const y = ((event.clientY - bounds.top) / bounds.height - .5) * -10;
+    document.body.style.setProperty('--bg-x', `${x}px`);
+    document.body.style.setProperty('--bg-y', `${y}px`);
+  });
+  intro.addEventListener('pointerleave', () => {
+    document.body.style.setProperty('--bg-x', '0px');
+    document.body.style.setProperty('--bg-y', '0px');
+  });
   const sample = () => {
     if ((isVideo && media.readyState < 2) || (!isVideo && !media.complete)) return;
     try {
@@ -190,9 +216,9 @@ function setupParticles(intro) {
     flow: Math.random(),
     bank: (Math.random() - .5) * 2,
     drift: Math.random() * Math.PI * 2,
-    scatterAngle: Math.random() * Math.PI * 2,
-    scatterDistance: Math.random() * 20 + 24,
-    scatter: 0,
+    textX: 0,
+    textY: 0,
+    morph: 0,
     size: .85,
     alpha: .38
   }));
@@ -201,6 +227,31 @@ function setupParticles(intro) {
   let height = 0;
   let ratio = 1;
   let frame = 0;
+  const assignTextTargets = () => {
+    const map = document.createElement('canvas');
+    map.width = Math.max(1, Math.round(width));
+    map.height = Math.max(1, Math.round(height));
+    const mapContext = map.getContext('2d', { willReadFrequently: true });
+    const fontSize = Math.min(width * .062, 62);
+    mapContext.fillStyle = '#000';
+    mapContext.font = `500 ${fontSize}px "Helvetica Neue",Arial,sans-serif`;
+    mapContext.textAlign = 'center';
+    mapContext.textBaseline = 'middle';
+    mapContext.fillText('HE · 河 · FIRENZE · 2026', width / 2, height * .46);
+    const pixels = mapContext.getImageData(0, 0, map.width, map.height).data;
+    const points = [];
+    const step = width < 700 ? 3 : 4;
+    for (let y = 0; y < map.height; y += step) for (let x = 0; x < map.width; x += step) if (pixels[(y * map.width + x) * 4 + 3] > 90) points.push({ x, y });
+    for (let index = points.length - 1; index > 0; index -= 1) {
+      const swap = Math.floor(Math.random() * (index + 1));
+      [points[index], points[swap]] = [points[swap], points[index]];
+    }
+    particles.forEach((particle, index) => {
+      const point = points[index % Math.max(points.length, 1)] || { x: width / 2, y: height / 2 };
+      particle.textX = point.x;
+      particle.textY = point.y;
+    });
+  };
   const resize = () => {
     const bounds = intro.getBoundingClientRect();
     ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -209,6 +260,7 @@ function setupParticles(intro) {
     canvas.width = width * ratio;
     canvas.height = height * ratio;
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    assignTextTargets();
   };
   new ResizeObserver(resize).observe(intro);
   resize();
@@ -232,14 +284,10 @@ function setupParticles(intro) {
       const centerline = centerY + Math.sin(flow * 5.1 + .3) * height * .095 + Math.sin(flow * 14 + .7) * height * .018;
       const baseX = flowLeft + flow * flowWidth + Math.sin(particle.drift + frame * 3) * .55;
       const baseY = centerline + particle.bank * riverWidth;
-      const pointerDistance = Math.hypot(pointer.x * width - baseX, pointer.y * height - baseY);
-      const scatterTarget = pointer.active ? Math.max(0, 1 - pointerDistance / 130) : 0;
-      particle.scatter += (scatterTarget - particle.scatter) * .11;
-      const rippleDirection = Math.atan2(baseY - pointer.y * height, baseX - pointer.x * width);
-      const swirlDirection = rippleDirection + Math.PI / 2;
-      const swirlMotion = particle.scatter * particle.scatterDistance;
-      const x = baseX + Math.cos(swirlDirection) * swirlMotion + Math.cos(rippleDirection) * swirlMotion * .18;
-      const y = baseY + Math.sin(swirlDirection) * swirlMotion + Math.sin(rippleDirection) * swirlMotion * .18;
+      particle.morph += ((pointer.active ? 1 : 0) - particle.morph) * .075;
+      const easedMorph = particle.morph * particle.morph * (3 - 2 * particle.morph);
+      const x = baseX + (particle.textX - baseX) * easedMorph;
+      const y = baseY + (particle.textY - baseY) * easedMorph;
       context.beginPath();
       context.arc(x, y, particle.size, 0, Math.PI * 2);
       context.fillStyle = `rgba(${particleRgb},${particle.alpha})`;
