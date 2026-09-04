@@ -95,7 +95,7 @@ function setupMotion() {
   document.head.appendChild(themeStyle);
   setupCustomScrollbar();
   const interactionStyle = document.createElement('style');
-  interactionStyle.textContent = `body.has-home-background{--home-foreground:#171716;position:relative;isolation:isolate}.home-background{position:absolute;top:0;left:0;width:100%;height:var(--home-cover-height,100svh);object-fit:cover;z-index:0}.site-header,main,footer{position:relative;z-index:1}body.has-home-background .site-header{color:var(--home-foreground);border-color:rgba(127,127,127,.32);transition:color .6s ease}body.has-home-background .site-header nav a{color:var(--home-foreground);opacity:.68}body.has-home-background .site-header nav a:hover{color:var(--home-foreground);opacity:1}.intro{--home-foreground:#171716;position:relative;min-height:calc(100svh - 66px);overflow:hidden;isolation:isolate;transition:color .6s ease}.intro>*:not(.particle-field){position:relative;z-index:2}body.has-home-background .intro h1,body.has-home-background .intro .eyebrow,body.has-home-background .intro .intro-note{color:var(--home-foreground);transition:color .6s ease,text-shadow .6s ease}body.has-home-background .intro h1{text-shadow:0 1px 20px rgba(0,0,0,.08)}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}`;
+  interactionStyle.textContent = `body.has-home-background{--home-foreground:#171716;--header-height:66px;position:relative;isolation:isolate}.home-background{position:absolute;top:0;left:0;width:100%;height:100dvh;min-height:100vh;object-fit:cover;z-index:0}.site-header,main,footer{position:relative;z-index:1}body.has-home-background .site-header{color:var(--home-foreground);border-color:rgba(127,127,127,.32);transition:color .6s ease}body.has-home-background .site-header nav a{color:var(--home-foreground);opacity:.68}body.has-home-background .site-header nav a:hover{color:var(--home-foreground);opacity:1}.intro{--home-foreground:#171716;position:relative;min-height:calc(100dvh - var(--header-height,66px));overflow:hidden;isolation:isolate;transition:color .6s ease}.intro>*:not(.particle-field){position:relative;z-index:2}body.has-home-background .intro{border-bottom:0}body.has-home-background .intro h1,body.has-home-background .intro .eyebrow,body.has-home-background .intro .intro-note{color:var(--home-foreground);transition:color .6s ease,text-shadow .6s ease}body.has-home-background .intro h1{text-shadow:0 1px 20px rgba(0,0,0,.08)}.particle-field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}`;
   document.head.appendChild(interactionStyle);
   const intro = document.querySelector('.intro');
   const projects = document.querySelector('.projects');
@@ -162,7 +162,7 @@ function setupHomeBackground(settings) {
   document.body.classList.add('has-home-background');
   const sizeCover = () => {
     const header = document.querySelector('.site-header');
-    document.body.style.setProperty('--home-cover-height', `${(header?.offsetHeight || 0) + intro.offsetHeight}px`);
+    document.body.style.setProperty('--header-height', `${header?.offsetHeight || 66}px`);
   };
   new ResizeObserver(sizeCover).observe(intro);
   sizeCover();
@@ -209,7 +209,7 @@ function setupParticles(intro) {
     textY: 0,
     morph: 0,
     size: .72,
-    alpha: .34
+    alpha: .56
   }));
   const pointer = { x: .5, y: .45, active: false };
   let width = 0;
@@ -290,7 +290,7 @@ function setupParticles(intro) {
       const drawSize = particle.size + (1.28 - particle.size) * easedMorph;
       context.beginPath();
       context.arc(x, y, drawSize, 0, Math.PI * 2);
-      context.fillStyle = `rgba(${particleRgb},${particle.alpha + easedMorph * .54})`;
+      context.fillStyle = `rgba(${particleRgb},${particle.alpha + easedMorph * .4})`;
       context.fill();
     });
     requestAnimationFrame(draw);
@@ -298,6 +298,6 @@ function setupParticles(intro) {
   draw();
 }
 
-Promise.all([getProjects(), getHomeSettings()]).then(([projects, settings]) => { renderList(projects); renderProject(projects); setupHomeBackground(settings); setupMotion(); }).catch((error) => {
+getProjects().then((projects) => { renderList(projects); renderProject(projects); setupMotion(); }).catch((error) => {
   document.querySelectorAll('[data-project-list],[data-project-detail]').forEach((target) => { target.innerHTML = `<p class="loading">${escapeHtml(error.message)}</p>`; });
 });
